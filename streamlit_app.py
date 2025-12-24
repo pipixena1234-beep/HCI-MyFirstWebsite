@@ -7,8 +7,8 @@ import zipfile
 
 # Optional: Google Drive
 try:
-    from pydrive.auth import GoogleAuth
-    from pydrive.drive import GoogleDrive
+    from pydrive2.auth import GoogleAuth
+    from pydrive2.drive import GoogleDrive
     GDRIVE_AVAILABLE = True
 except:
     GDRIVE_AVAILABLE = False
