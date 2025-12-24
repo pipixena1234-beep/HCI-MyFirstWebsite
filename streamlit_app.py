@@ -42,25 +42,25 @@ if uploaded_file:
 
     # --- 4. PDF Download per student ---
     for idx, row in df.iterrows():
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, f"Progress Report: {row['Student Name']}", ln=True)
-    pdf.set_font("Arial", "", 12)
-    for skill in skills:
-        pdf.cell(0, 8, f"{skill}: {row[skill]}", ln=True)
-    pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
-    pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
-    pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
-
-    pdf_bytes = BytesIO()
-    pdf_output = pdf.output(dest='S').encode('latin-1')
-    pdf_bytes.write(pdf_output)
-    pdf_bytes.seek(0)
-
-    st.download_button(
-        f"Download PDF for {row['Student Name']}",
-        data=pdf_bytes,
-        file_name=f"{row['Student Name']}_report.pdf"
-    )
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, f"Progress Report: {row['Student Name']}", ln=True)
+        pdf.set_font("Arial", "", 12)
+        for skill in skills:
+            pdf.cell(0, 8, f"{skill}: {row[skill]}", ln=True)
+        pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
+        pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
+        pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+    
+        pdf_bytes = BytesIO()
+        pdf_output = pdf.output(dest='S').encode('latin-1')
+        pdf_bytes.write(pdf_output)
+        pdf_bytes.seek(0)
+    
+        st.download_button(
+            f"Download PDF for {row['Student Name']}",
+            data=pdf_bytes,
+            file_name=f"{row['Student Name']}_report.pdf"
+        )
 
