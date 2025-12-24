@@ -118,7 +118,12 @@ if uploaded_file:
                     pdf_bytes.write(pdf_output)
                     pdf_bytes.seek(0)
 
-                    file_drive = drive.CreateFile({'title': f"{row['Student Name']}_report.pdf"})
+                    folder_id = "1mxhb5P7qob_lhfXdMeC2HWwKP9lDahmU"
+
+                    file_drive = drive.CreateFile({
+                        'title': f"{row['Student Name']}_report.pdf",
+                        'parents': [{'id': folder_id}]
+                    })
                     file_drive.SetContentString(pdf_bytes.read().decode('latin-1'))
                     file_drive.Upload()
                 st.success("✅ Selected PDFs uploaded to Google Drive successfully!")
