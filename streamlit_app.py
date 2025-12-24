@@ -40,8 +40,18 @@ if uploaded_file:
     # --- 3. Skill Charts ---
     st.bar_chart(df[skills].mean())
 
-    # --- 4. PDF Download per student ---
-    for idx, row in df.iterrows():
+    # --- 4. Multiselect for students ---
+    student_options = df['Student Name'].tolist()
+    selected_students = st.multiselect(
+        "Select students to download PDF",
+        options=student_options,
+        default=student_options  # default: all selected (like "Select All")
+    )
+    
+    # --- 5. Generate PDFs for selected students ---
+    for student in selected_students:
+        row = df[df['Student Name'] == student].iloc[0]  # get student row
+    
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", "B", 16)
@@ -53,11 +63,13 @@ if uploaded_file:
         pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
         pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
     
+        # --- 6. Convert PDF to BytesIO ---
         pdf_bytes = BytesIO()
         pdf_output = pdf.output(dest='S').encode('latin-1')
         pdf_bytes.write(pdf_output)
         pdf_bytes.seek(0)
     
+        # --- 7. Download button per student ---
         st.download_button(
             f"Download PDF for {row['Student Name']}",
             data=pdf_bytes,
