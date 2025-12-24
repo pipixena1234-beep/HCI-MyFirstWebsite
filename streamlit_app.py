@@ -97,7 +97,7 @@ if uploaded_file:
             st.subheader("📤 Upload to Google Drive (Local / Service Account)")
             if st.button("Upload selected PDFs to Google Drive"):
                 gauth = GoogleAuth()
-                gauth.LocalWebserverAuth()  # local auth flow
+                gauth.ServiceAuth('client_secrets.json')   # local auth flow
                 drive = GoogleDrive(gauth)
                 for student in selected_students:
                     row = df[df['Student Name'] == student].iloc[0]
