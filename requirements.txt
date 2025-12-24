@@ -1,5 +1,5 @@
 streamlit
 pandas
 matplotlib
-FPDF
-BytesIO
+fpdf
+bytesio
