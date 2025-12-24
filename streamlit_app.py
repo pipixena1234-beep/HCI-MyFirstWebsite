@@ -1,94 +1,57 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+from fpdf import FPDF
+from io import BytesIO
 
-st.set_page_config(page_title="Student Progress Report", layout="centered")
+st.title("📊 Student Progress Report System")
 
-st.title("📊 Student Progress Report Generator")
+# --- 1. CSV Upload ---
+uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    st.dataframe(df)
 
-# -----------------------------
-# Student Info
-# -----------------------------
-st.header("👩‍🎓 Student Information")
+    skills = ["Logic", "UI", "Animation", "Teamwork"]
+    df["Average"] = df[skills].mean(axis=1)
 
-name = st.text_input("Student Name")
-student_id = st.text_input("Student ID")
-course = st.text_input("Course / Subject")
-semester = st.selectbox("Semester", ["Sem 1", "Sem 2", "Sem 3", "Sem 4"])
+    def grade(avg):
+        if avg >= 80: return "A"
+        elif avg >= 70: return "B"
+        elif avg >= 60: return "C"
+        elif avg >= 50: return "D"
+        else: return "F"
 
-# -----------------------------
-# Marks Input
-# -----------------------------
-st.header("📝 Assessment Scores")
+    df["Grade"] = df["Average"].apply(grade)
 
-data = {
-    "Assessment": ["Quiz", "Assignment", "Midterm", "Final"],
-    "Score": [0, 0, 0, 0]
-}
+    # --- 2. AI / Rule-Based Remarks ---
+    def remarks(avg):
+        if avg >= 80:
+            return "Excellent work!"
+        elif avg >= 70:
+            return "Good effort, keep improving!"
+        else:
+            return "Needs improvement, focus on practice."
+    df["Remarks"] = df["Average"].apply(remarks)
 
-df = pd.DataFrame(data)
+    st.header("📄 Class Dashboard")
+    st.dataframe(df)
 
-edited_df = st.data_editor(
-    df,
-    num_rows="fixed",
-    use_container_width=True
-)
+    # --- 3. Skill Charts ---
+    st.bar_chart(df[skills].mean())
 
-# -----------------------------
-# Calculation
-# -----------------------------
-average = edited_df["Score"].mean()
-
-def grade(avg):
-    if avg >= 80:
-        return "A"
-    elif avg >= 70:
-        return "B"
-    elif avg >= 60:
-        return "C"
-    elif avg >= 50:
-        return "D"
-    else:
-        return "F"
-
-final_grade = grade(average)
-
-# -----------------------------
-# Results
-# -----------------------------
-st.header("📈 Performance Summary")
-
-st.metric("Average Score", f"{average:.2f}")
-st.metric("Final Grade", final_grade)
-
-# Chart
-fig, ax = plt.subplots()
-ax.bar(edited_df["Assessment"], edited_df["Score"])
-ax.set_ylim(0, 100)
-ax.set_ylabel("Score")
-ax.set_title("Assessment Breakdown")
-
-st.pyplot(fig)
-
-# -----------------------------
-# Report Text
-# -----------------------------
-st.header("📄 Generated Report")
-
-report = f"""
-Student Name: {name}
-Student ID: {student_id}
-Course: {course}
-Semester: {semester}
-
-Assessment Scores:
-{edited_df.to_string(index=False)}
-
-Average Score: {average:.2f}
-Final Grade: {final_grade}
-
-Remarks:
-{"Good progress. Keep it up!" if average >= 70 else "Needs improvement. More practice recommended."}
-"""
-
-st.text_area("Progress Report", report, height=300)
+    # --- 4. PDF Download per student ---
+    for idx, row in df.iterrows():
+        pdf_bytes = BytesIO()
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, f"Progress Report: {row['Student Name']}", ln=True)
+        pdf.set_font("Arial", "", 12)
+        for skill in skills:
+            pdf.cell(0, 8, f"{skill}: {row[skill]}", ln=True)
+        pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
+        pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
+        pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+        pdf.output(pdf_bytes)
+        st.download_button(f"Download PDF for {row['Student Name']}", data=pdf_bytes, file_name=f"{row['Student Name']}_report.pdf")
