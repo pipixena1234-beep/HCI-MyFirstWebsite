@@ -7,6 +7,7 @@ import json
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
+import time
 
 st.set_page_config(page_title="Student Progress Reports", layout="wide")
 st.title("📊 Student Progress Report System (Flattened, Term-aware)")
@@ -124,8 +125,10 @@ if uploaded_file:
                 zip_file.writestr(f"{row['Term']}/{row['Student Name'].strip()}_report.pdf", pdf_bytes.read())
         zip_buffer.seek(0)
         st.download_button("⬇️ Download ZIP", data=zip_buffer, file_name="student_reports.zip")
-
-    # --- Upload to Google Drive with folder trashing ---
+        
+    # =========================
+    # Upload to Google Drive
+    # =========================
     st.subheader("📤 Upload to Google Drive")
     folder_id_input = st.text_input(
         "Enter Google Drive Folder ID",
@@ -143,25 +146,26 @@ if uploaded_file:
             for term in selected_terms:
                 term_clean = term.strip()
     
-                # --- Find all folders with the same name and move to Trash ---
-                query = (
+                # --- Trash any existing folders with the same name ---
+                query_existing_folders = (
                     f"name='{term_clean}' and mimeType='application/vnd.google-apps.folder' "
                     f"and '{folder_id_input.strip()}' in parents and trashed=false"
                 )
-                response = drive_service.files().list(
-                    q=query,
+                existing_folders = drive_service.files().list(
+                    q=query_existing_folders,
                     fields="files(id, name)",
                     supportsAllDrives=True
                 ).execute()
     
-                for f in response.get('files', []):
+                for folder in existing_folders.get('files', []):
                     drive_service.files().update(
-                        fileId=f['id'],
+                        fileId=folder['id'],
                         body={'trashed': True},
                         supportsAllDrives=True
                     ).execute()
+                    time.sleep(0.5)  # give time for Drive to update
     
-                # --- Create a fresh folder ---
+                # --- Create new folder for term ---
                 folder_metadata = {
                     'name': term_clean,
                     'mimeType': 'application/vnd.google-apps.folder',
@@ -177,12 +181,13 @@ if uploaded_file:
                 # --- Upload PDFs ---
                 df_term = df[df["Term"] == term]
                 for _, row in df_term.iterrows():
+                    student_name = row['Student Name'].strip()
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
+                    pdf.cell(0, 10, f"Progress Report ({term_clean})", ln=True)
                     pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f"Student: {row['Student Name'].strip()}", ln=True)
+                    pdf.cell(0, 8, f"Student: {student_name}", ln=True)
                     for s in skills:
                         pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
                     pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
@@ -194,16 +199,32 @@ if uploaded_file:
                     pdf_bytes.seek(0)
                     media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
     
-                    file_name = f"{row['Student Name'].strip()}_report.pdf"
-                    file_metadata = {'name': file_name, 'parents':[term_folder_id]}
-                    drive_service.files().create(
-                        body=file_metadata,
-                        media_body=media,
-                        fields='id',
+                    file_name = f"{student_name}_report.pdf"
+                    # --- Overwrite existing PDF if exists ---
+                    query_file = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
+                    existing_files = drive_service.files().list(
+                        q=query_file,
+                        fields="files(id, name)",
                         supportsAllDrives=True
                     ).execute()
     
-            st.success("✅ PDFs uploaded to Google Drive successfully (old folders moved to Trash)!")
+                    if existing_files.get('files'):
+                        file_id = existing_files['files'][0]['id']
+                        drive_service.files().update(
+                            fileId=file_id,
+                            media_body=media,
+                            supportsAllDrives=True
+                        ).execute()
+                    else:
+                        file_metadata = {'name': file_name, 'parents': [term_folder_id]}
+                        drive_service.files().create(
+                            body=file_metadata,
+                            media_body=media,
+                            fields='id',
+                            supportsAllDrives=True
+                        ).execute()
+    
+            st.success("✅ PDFs uploaded to Google Drive successfully!")
     
         except Exception as e:
             st.error(f"Google Drive upload failed: {e}")
