@@ -180,10 +180,7 @@ if uploaded_file:
             st.error(f"Failed to delete reports: {e}")
 
         
-     # =========================
-     # Upload to Google Drive
-     # =========================
-    st.subheader("📤 Upload to Google Drive")
+     st.subheader("📤 Upload to Google Drive")
     folder_id_input = st.text_input(
         "Enter Google Drive Folder ID",
         value="0ALncbMfl-gjdUk9PVA"
@@ -197,29 +194,48 @@ if uploaded_file:
             )
             drive_service = build('drive', 'v3', credentials=credentials)
     
+            # Create a progress bar
+            prog_bar = st.progress(0)
+            total_steps = len(selected_terms) * len(df) # Approximate steps
+            current_step = 0
+    
             for term in selected_terms:
                 term_clean = term.strip()
-    
-                # --- Trash any existing folders with the same name ---
+                
+                # ==========================================
+                # 1. FIXED DELETION LOGIC
+                # ==========================================
+                # Find existing folders with this Term Name inside the parent folder
                 query_existing_folders = (
-                    f"name='{term_clean}' and mimeType='application/vnd.google-apps.folder' "
-                    f"and '{folder_id_input.strip()}' in parents and trashed=false"
+                    f"name='{term_clean}' "
+                    f"and mimeType='application/vnd.google-apps.folder' "
+                    f"and '{folder_id_input.strip()}' in parents "
+                    f"and trashed=false"
                 )
+                
+                # IMPORTANT: Added includeItemsFromAllDrives=True
                 existing_folders = drive_service.files().list(
                     q=query_existing_folders,
                     fields="files(id, name)",
+                    includeItemsFromAllDrives=True, 
                     supportsAllDrives=True
                 ).execute()
     
+                # Delete (Trash) the old folders
                 for folder in existing_folders.get('files', []):
-                    drive_service.files().update(
-                        fileId=folder['id'],
-                        body={'trashed': True},
-                        supportsAllDrives=True
-                    ).execute()
-                    time.sleep(0.5)  # give time for Drive to update
+                    try:
+                        drive_service.files().update(
+                            fileId=folder['id'],
+                            body={'trashed': True},
+                            supportsAllDrives=True
+                        ).execute()
+                    except Exception as e:
+                        st.warning(f"Could not delete old folder '{folder['name']}': {e}")
+                    time.sleep(0.2) # Short pause to avoid API limits
     
-                # --- Create new folder for term ---
+                # ==========================================
+                # 2. CREATE FRESH FOLDER
+                # ==========================================
                 folder_metadata = {
                     'name': term_clean,
                     'mimeType': 'application/vnd.google-apps.folder',
@@ -232,10 +248,15 @@ if uploaded_file:
                 ).execute()
                 term_folder_id = term_folder['id']
     
-                # --- Upload PDFs ---
+                # ==========================================
+                # 3. UPLOAD PDFs (Optimized)
+                # ==========================================
                 df_term = df[df["Term"] == term]
+                
                 for _, row in df_term.iterrows():
                     student_name = row['Student Name'].strip()
+                    
+                    # --- Generate PDF (Your existing logic) ---
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
@@ -254,30 +275,31 @@ if uploaded_file:
                     media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
     
                     file_name = f"{student_name}_report.pdf"
-                    # --- Overwrite existing PDF if exists ---
-                    query_file = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
-                    existing_files = drive_service.files().list(
-                        q=query_file,
-                        fields="files(id, name)",
-                        supportsAllDrives=True
-                    ).execute()
     
-                    if existing_files.get('files'):
-                        file_id = existing_files['files'][0]['id']
-                        drive_service.files().update(
-                            fileId=file_id,
-                            media_body=media,
-                            supportsAllDrives=True
-                        ).execute()
-                    else:
-                        file_metadata = {'name': file_name, 'parents': [term_folder_id]}
+                    # --- UPLOAD ---
+                    # Since we just created a NEW empty folder, we don't need to check 
+                    # if the file exists. We can just create it directly.
+                    file_metadata = {
+                        'name': file_name, 
+                        'parents': [term_folder_id]
+                    }
+                    
+                    try:
                         drive_service.files().create(
                             body=file_metadata,
                             media_body=media,
                             fields='id',
                             supportsAllDrives=True
                         ).execute()
+                    except Exception as upload_err:
+                        st.error(f"Failed to upload {file_name}: {upload_err}")
     
+                    # Update Progress
+                    current_step += 1
+                    if current_step < total_steps:
+                        prog_bar.progress(current_step / total_steps)
+    
+            prog_bar.progress(1.0)
             st.success("✅ PDFs uploaded to Google Drive successfully!")
     
         except Exception as e:
