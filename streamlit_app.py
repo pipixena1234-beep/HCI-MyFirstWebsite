@@ -79,7 +79,6 @@ if uploaded_file:
     # =========================
     st.subheader("📅 Term Selection")
     select_terms = st.checkbox("Select terms to generate reports for")
-
     all_terms = sorted(df["Term"].unique())
 
     if select_terms:
@@ -128,36 +127,85 @@ if uploaded_file:
     # =========================
     if st.button("📦 Generate PDFs (ZIP)"):
         zip_buffer = BytesIO()
-
         with zipfile.ZipFile(zip_buffer, "w") as zip_file:
             for _, row in df.iterrows():
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font("Arial", "B", 16)
                 pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
-
                 pdf.set_font("Arial", "", 12)
                 pdf.cell(0, 8, f"Student: {row['Student Name']}", ln=True)
-
                 for s in skills:
                     pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
-
                 pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
                 pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
                 pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
-
                 pdf_bytes = BytesIO()
                 pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
                 pdf_bytes.seek(0)
-
                 zip_file.writestr(
                     f"{row['Term']}/{row['Student Name']}_report.pdf",
                     pdf_bytes.read()
                 )
-
         zip_buffer.seek(0)
         st.download_button(
             "⬇️ Download ZIP",
             data=zip_buffer,
             file_name="student_reports.zip"
         )
+
+    # =========================
+    # Upload to Google Drive
+    # =========================
+    st.subheader("📤 Upload to Google Drive")
+    folder_id_input = st.text_input("Enter parent Google Drive Folder ID:")
+
+    if st.button("Upload to Google Drive"):
+        try:
+            sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
+            credentials = service_account.Credentials.from_service_account_info(
+                sa_info, scopes=['https://www.googleapis.com/auth/drive']
+            )
+            drive_service = build('drive', 'v3', credentials=credentials)
+
+            for term in selected_terms:
+                # Check or create folder for term
+                query = f"name='{term}' and mimeType='application/vnd.google-apps.folder' and '{folder_id_input}' in parents"
+                response = drive_service.files().list(q=query, fields="files(id, name)").execute()
+                if response['files']:
+                    term_folder_id = response['files'][0]['id']
+                else:
+                    folder_metadata = {
+                        'name': term,
+                        'mimeType': 'application/vnd.google-apps.folder',
+                        'parents':[folder_id_input]
+                    }
+                    term_folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
+                    term_folder_id = term_folder['id']
+
+                # Upload PDFs
+                df_term = df[df["Term"] == term]
+                for _, row in df_term.iterrows():
+                    pdf = FPDF()
+                    pdf.add_page()
+                    pdf.set_font("Arial", "B", 16)
+                    pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
+                    pdf.set_font("Arial", "", 12)
+                    pdf.cell(0, 8, f"Student: {row['Student Name']}", ln=True)
+                    for s in skills:
+                        pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
+                    pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
+                    pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
+                    pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+                    pdf_bytes = BytesIO()
+                    pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
+                    pdf_bytes.seek(0)
+
+                    media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
+                    file_metadata = {'name': f"{row['Student Name']}_report.pdf", 'parents':[term_folder_id]}
+                    drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+            st.success("✅ PDFs uploaded to Google Drive successfully!")
+
+        except Exception as e:
+            st.error(f"Google Drive upload failed: {e}")
