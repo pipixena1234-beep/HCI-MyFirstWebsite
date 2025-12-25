@@ -25,29 +25,45 @@ if uploaded_file:
     # --- 2. Skill-based grading ---
     skills = ["Logic", "UI", "Animation", "Teamwork"]
     df["Average"] = df[skills].mean(axis=1)
-    df["Grade"] = df["Average"].apply(
-        lambda x: "A" if x >= 80 else "B" if x >= 70 else "C" if x >= 60 else "D" if x >= 50 else "F"
-    )
-    df["Remarks"] = df["Average"].apply(
-        lambda x: "Excellent work!" if x >= 80 else "Good effort!" if x >= 70 else "Needs improvement."
-    )
+
+    def grade(avg):
+        if avg >= 80: return "A"
+        elif avg >= 70: return "B"
+        elif avg >= 60: return "C"
+        elif avg >= 50: return "D"
+        else: return "F"
+
+    df["Grade"] = df["Average"].apply(grade)
+
+    # --- 3. AI / Rule-based remarks ---
+    def remarks(avg):
+        if avg >= 80:
+            return "Excellent work!"
+        elif avg >= 70:
+            return "Good effort, keep improving!"
+        else:
+            return "Needs improvement, focus on practice."
+
+    df["Remarks"] = df["Average"].apply(remarks)
 
     st.subheader("Average Skills")
     st.bar_chart(df[skills].mean())
 
-    # --- 3. Multi-select PDF / ZIP download ---
+    # --- 4. Multi-select PDF / ZIP download ---
+    student_options = df['Student Name'].tolist()
     selected_students = st.multiselect(
         "Select students to generate PDFs",
-        df["Student Name"].tolist(),
-        default=df["Student Name"].tolist()
+        options=student_options,
+        default=student_options
     )
 
     if selected_students:
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as zip_file:
             for student in selected_students:
-                row = df[df["Student Name"] == student].iloc[0]
+                row = df[df['Student Name'] == student].iloc[0]
 
+                # Generate PDF
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font("Arial", "B", 16)
@@ -67,30 +83,31 @@ if uploaded_file:
 
         zip_buffer.seek(0)
         st.download_button(
-            "📦 Download ZIP of Selected PDFs",
-            zip_buffer,
+            "📦 Download PDFs for Selected Students (ZIP)",
+            data=zip_buffer,
             file_name="student_reports.zip"
         )
 
-        # --- 4. Google Drive Upload ---
-        folder_id = st.text_input(
+        # --- 5. Google Drive upload ---
+        st.subheader("📤 Upload Selected PDFs to Google Drive")
+        folder_id_input = st.text_input(
             "Enter Google Drive Folder ID",
             value="YOUR_FOLDER_ID_HERE"
         )
-        if st.button("Upload PDFs to Google Drive"):
-            try:
-                # --- Load service account credentials locally ---
-                SERVICE_ACCOUNT_FILE = "service_account.json"
-                SCOPES = ['https://www.googleapis.com/auth/drive']
-                credentials = service_account.Credentials.from_service_account_file(
-                    SERVICE_ACCOUNT_FILE, scopes=SCOPES
-                )
 
+        if st.button("Upload to Google Drive"):
+            try:
+                # Load credentials from Streamlit secrets
+                sa_info = json.loads(st.secrets["google_service_account"])
+                credentials = service_account.Credentials.from_service_account_info(
+                    sa_info, scopes=['https://www.googleapis.com/auth/drive']
+                )
                 drive_service = build('drive', 'v3', credentials=credentials)
 
                 for student in selected_students:
-                    row = df[df["Student Name"] == student].iloc[0]
+                    row = df[df['Student Name'] == student].iloc[0]
 
+                    # Generate PDF again
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
@@ -106,13 +123,19 @@ if uploaded_file:
                     pdf_bytes.write(pdf.output(dest='S').encode('latin-1'))
                     pdf_bytes.seek(0)
 
-                    media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf')
+                    media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
+                    file_metadata = {
+                        'name': f"{row['Student Name']}_report.pdf",
+                        'parents': [folder_id_input]
+                    }
+
                     drive_service.files().create(
-                        body={'name': f"{row['Student Name']}_report.pdf", 'parents':[folder_id]},
-                        media_body=media
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id'
                     ).execute()
 
-                st.success("✅ Selected PDFs uploaded to Google Drive successfully!")
+                st.success("✅ PDFs uploaded to Google Drive successfully!")
 
             except Exception as e:
                 st.error(f"Google Drive upload failed: {e}")
