@@ -158,7 +158,10 @@ if uploaded_file:
     # Upload to Google Drive
     # =========================
     st.subheader("📤 Upload to Google Drive")
-    folder_id_input = "0ALncbMfl-gjdUk9PVA"
+    folder_id_input =  st.text_input(
+            "Enter Google Drive Folder ID",
+            value="0ALncbMfl-gjdUk9PVA"
+        )
 
     if st.button("Upload to Google Drive"):
         try:
