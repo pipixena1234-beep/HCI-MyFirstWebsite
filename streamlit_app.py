@@ -169,7 +169,7 @@ if uploaded_file:
     folder_id_input = st.text_input(
         "Enter Google Drive Folder ID",
         value="0ALncbMfl-gjdUk9PVA"
-    )
+    ).strip()
     
     if st.button("Upload to Google Drive"):
         try:
@@ -183,7 +183,7 @@ if uploaded_file:
                 # --- Check if term folder exists ---
                 query = (
                     f"name='{term.strip()}' and mimeType='application/vnd.google-apps.folder' "
-                    f"and '{folder_id_input.strip()}' in parents and trashed=false"
+                    f"and '{folder_id_input}' in parents and trashed=false"
                 )
                 response = drive_service.files().list(
                     q=query,
