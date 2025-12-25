@@ -4,17 +4,11 @@ import matplotlib.pyplot as plt
 from fpdf import FPDF
 from io import BytesIO
 import zipfile
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
+from oauth2client.service_account import ServiceAccountCredentials
 
-# Optional: Google Drive
-try:
-    from pydrive2.auth import GoogleAuth
-    from pydrive2.drive import GoogleDrive
-    GDRIVE_AVAILABLE = True
-except:
-    GDRIVE_AVAILABLE = False
-
-st.title("📊 Student Progress Report System")
-st.caption("App version: 1.0")
+st.title("📊 Student Progress Report System (Cloud-ready)")
 
 # --- 1. CSV Upload ---
 uploaded_file = st.file_uploader("Upload CSV (Student Name, Logic, UI, Animation, Teamwork)", type=["csv"])
@@ -92,19 +86,21 @@ if uploaded_file:
             file_name="student_reports.zip"
         )
 
-        # --- 6. Optional Google Drive upload ---
-        if GDRIVE_AVAILABLE:
-            st.subheader("📤 Upload to Google Drive (Local / Service Account)")
-            if st.button("Upload selected PDFs to Google Drive"):
-                gauth = GoogleAuth()  
-                # Use service account credentials
-                gauth.ServiceAuth()  # Initializes service auth
-                gauth.settings['client_config_file'] = "service_account.json"
-                gauth.ServiceAuth()  # Authenticate with the JSON key  
+        # --- 6. Google Drive upload (service account) ---
+        st.subheader("📤 Upload to Google Drive Folder")
+        folder_id_input = st.text_input("Enter Google Drive Folder ID", value="1mxhb5P7qob_lhfXdMeC2HWwKP9lDahmU")
+        if st.button("Upload selected PDFs to Google Drive"):
+            try:
+                gauth = GoogleAuth()
+                gauth.credentials = ServiceAccountCredentials.from_json_keyfile_name(
+                    "service_account.json",
+                    scopes=["https://www.googleapis.com/auth/drive"]
+                )
                 drive = GoogleDrive(gauth)
+
                 for student in selected_students:
                     row = df[df['Student Name'] == student].iloc[0]
-                    # Generate PDF again
+
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
@@ -121,12 +117,14 @@ if uploaded_file:
                     pdf_bytes.write(pdf_output)
                     pdf_bytes.seek(0)
 
-                    folder_id = "1mxhb5P7qob_lhfXdMeC2HWwKP9lDahmU"
-
                     file_drive = drive.CreateFile({
                         'title': f"{row['Student Name']}_report.pdf",
-                        'parents': [{'id': folder_id}]
+                        'parents': [{'id': folder_id_input}]
                     })
                     file_drive.SetContentString(pdf_bytes.read().decode('latin-1'))
                     file_drive.Upload()
+
                 st.success("✅ Selected PDFs uploaded to Google Drive successfully!")
+
+            except Exception as e:
+                st.error(f"Google Drive upload failed: {e}")
