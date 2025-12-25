@@ -198,7 +198,7 @@ if uploaded_file:
                     pdf.set_font("Arial", "B", 16)
                     pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
                     pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f"Student: {row['Student Name']}", ln=True)
+                    pdf.cell(0, 8, f"Student: {row['Student Name'].strip()}", ln=True)
                     for s in skills:
                         pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
                     pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
@@ -209,7 +209,7 @@ if uploaded_file:
                     pdf_bytes.seek(0)
 
                     media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
-                    file_metadata = {'name': f"{row['Student Name']}_report.pdf", 'parents':[term_folder_id]}
+                    file_metadata = {'name': f"{row['Student Name'].strip()}_report.pdf", 'parents':[term_folder_id]}
                     drive_service.files().create(body=file_metadata, media_body=media, fields='id', supportsAllDrives=True).execute()
 
             st.success("✅ PDFs uploaded to Google Drive successfully!")
