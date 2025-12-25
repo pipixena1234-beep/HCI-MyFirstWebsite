@@ -198,7 +198,7 @@ if uploaded_file:
                     folder_metadata = {
                         'name': term.strip(),
                         'mimeType': 'application/vnd.google-apps.folder',
-                        'parents': [folder_id_input].strip()
+                        'parents': [folder_id_input]
                     }
                     term_folder = drive_service.files().create(
                         body=folder_metadata,
