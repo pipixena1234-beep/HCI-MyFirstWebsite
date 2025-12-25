@@ -222,7 +222,12 @@ if uploaded_file:
                     # Check if file exists
                     file_name = f"{row['Student Name'].strip()}_report.pdf"
                     query = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
-                    existing_files = drive_service.files().list(q=query, fields="files(id, name)").execute()
+                    existing_files =  drive_service.files().list(
+                    q=query,
+                    fields="files(id, name)",
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True
+                    ).execute()
             
                     if existing_files['files']:
                         # Update existing file
