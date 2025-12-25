@@ -140,28 +140,45 @@ if uploaded_file:
             )
             drive_service = build('drive', 'v3', credentials=credentials)
     
-            # List all files in the folder (recursively if needed)
+            # 1. FIXED QUERY: Look for items where the parent is the ID provided
+            # We also set pageSize=1000 to catch more files in one go (default is 100)
+            query = f"'{delete_folder_id}' in parents and trashed = false"
+    
             files = drive_service.files().list(
-            q="name='YourFolderName' and mimeType='application/vnd.google-apps.folder'",
-            includeItemsFromAllDrives=True,
-            supportsAllDrives=True,
-            fields="files(id, name)"
+                q=query,
+                pageSize=1000, 
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+                fields="files(id, name)"
             ).execute()
     
-            deleted_count = 0
-            for f in files.get('files', []):
-                drive_service.files().update(
-                    fileId=f['id'],
-                    body={'trashed': True},
-                    supportsAllDrives=True
-                ).execute()
-                deleted_count += 1
-                time.sleep(0.2)  # give Drive time to process
+            items = files.get('files', [])
     
-            st.success(f"✅ Trashed {deleted_count} files in the folder!")
+            if not items:
+                st.warning("Folder is already empty (or invalid ID provided).")
+            else:
+                deleted_count = 0
+                my_bar = st.progress(0)
+                
+                for i, f in enumerate(items):
+                    try:
+                        drive_service.files().update(
+                            fileId=f['id'],
+                            body={'trashed': True},
+                            supportsAllDrives=True
+                        ).execute()
+                        deleted_count += 1
+                    except Exception as e:
+                        st.error(f"Error deleting {f['name']}: {e}")
+                    
+                    # Update progress
+                    my_bar.progress((i + 1) / len(items))
+    
+                st.success(f"✅ Successfully trashed {deleted_count} files!")
     
         except Exception as e:
             st.error(f"Failed to delete reports: {e}")
+
         
     # =========================
     # Upload to Google Drive (delegated credentials)
