@@ -183,7 +183,7 @@ if uploaded_file:
                 # --- Check if term folder exists ---
                 query = (
                     f"name='{term.strip()}' and mimeType='application/vnd.google-apps.folder' "
-                    f"and '{folder_id_input}' in parents and trashed=false"
+                    f"and '{folder_id_input.strip()}' in parents and trashed=false"
                 )
                 response = drive_service.files().list(
                     q=query,
