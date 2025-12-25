@@ -164,47 +164,55 @@ if uploaded_file:
             st.error(f"Failed to delete reports: {e}")
         
     # =========================
-    # Upload to Google Drive
+    # Upload to Google Drive (delegated credentials)
     # =========================
-    st.subheader("📤 Upload to Google Drive")
+    import time
+    from google.oauth2 import service_account
+    
+    st.subheader("📤 Upload to Google Drive (delegated user)")
+    
     folder_id_input = st.text_input(
         "Enter Google Drive Folder ID",
         value="0ALncbMfl-gjdUk9PVA"
     )
     
-    if st.button("Upload to Google Drive"):
+    if st.button("Upload to Google Drive (delegated)"):
         try:
+            # Load service account info
             sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
-            credentials = service_account.Credentials.from_service_account_info(
-                sa_info, scopes=['https://www.googleapis.com/auth/drive']
-            )
-            drive_service = build('drive', 'v3', credentials=credentials)
+            SCOPES = ['https://www.googleapis.com/auth/drive']
+    
+            # Delegate to real user (must have Manager rights)
+            delegated_credentials = service_account.Credentials.from_service_account_info(
+                sa_info, scopes=SCOPES
+            ).with_subject('realuser@yourdomain.com')  # <-- your real Google Workspace email
+    
+            drive_service = build('drive', 'v3', credentials=delegated_credentials, cache_discovery=False)
     
             for term in selected_terms:
-                term_clean = term.strip()
-    
-                # --- Trash any existing folders with the same name ---
-                query_existing_folders = (
-                    f"name='{term_clean}' and mimeType='application/vnd.google-apps.folder' "
+                # --- Trash any existing folder with the same term name ---
+                query_folders = (
+                    f"name='{term.strip()}' and mimeType='application/vnd.google-apps.folder' "
                     f"and '{folder_id_input.strip()}' in parents and trashed=false"
                 )
                 existing_folders = drive_service.files().list(
-                    q=query_existing_folders,
+                    q=query_folders,
                     fields="files(id, name)",
-                    supportsAllDrives=True
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True
                 ).execute()
     
-                for folder in existing_folders.get('files', []):
+                for f in existing_folders.get('files', []):
                     drive_service.files().update(
-                        fileId=folder['id'],
+                        fileId=f['id'],
                         body={'trashed': True},
                         supportsAllDrives=True
                     ).execute()
-                    time.sleep(0.5)  # give time for Drive to update
+                    time.sleep(0.2)  # give Drive time to process
     
-                # --- Create new folder for term ---
+                # --- Create new folder for this term ---
                 folder_metadata = {
-                    'name': term_clean,
+                    'name': term.strip(),
                     'mimeType': 'application/vnd.google-apps.folder',
                     'parents': [folder_id_input.strip()]
                 }
@@ -215,16 +223,15 @@ if uploaded_file:
                 ).execute()
                 term_folder_id = term_folder['id']
     
-                # --- Upload PDFs ---
+                # --- Upload PDFs for students in this term ---
                 df_term = df[df["Term"] == term]
                 for _, row in df_term.iterrows():
-                    student_name = row['Student Name'].strip()
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Progress Report ({term_clean})", ln=True)
+                    pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
                     pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f"Student: {student_name}", ln=True)
+                    pdf.cell(0, 8, f"Student: {row['Student Name'].strip()}", ln=True)
                     for s in skills:
                         pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
                     pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
@@ -236,13 +243,15 @@ if uploaded_file:
                     pdf_bytes.seek(0)
                     media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
     
-                    file_name = f"{student_name}_report.pdf"
-                    # --- Overwrite existing PDF if exists ---
+                    file_name = f"{row['Student Name'].strip()}_report.pdf"
+    
+                    # Check if file exists in the new folder (rare, but just in case)
                     query_file = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
                     existing_files = drive_service.files().list(
                         q=query_file,
                         fields="files(id, name)",
-                        supportsAllDrives=True
+                        supportsAllDrives=True,
+                        includeItemsFromAllDrives=True
                     ).execute()
     
                     if existing_files.get('files'):
@@ -253,7 +262,7 @@ if uploaded_file:
                             supportsAllDrives=True
                         ).execute()
                     else:
-                        file_metadata = {'name': file_name, 'parents': [term_folder_id]}
+                        file_metadata = {'name': file_name, 'parents':[term_folder_id]}
                         drive_service.files().create(
                             body=file_metadata,
                             media_body=media,
@@ -261,7 +270,7 @@ if uploaded_file:
                             supportsAllDrives=True
                         ).execute()
     
-            st.success("✅ PDFs uploaded to Google Drive successfully!")
+            st.success("✅ Old reports deleted and new PDFs uploaded successfully!")
     
         except Exception as e:
             st.error(f"Google Drive upload failed: {e}")
