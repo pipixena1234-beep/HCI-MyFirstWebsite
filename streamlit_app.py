@@ -194,8 +194,7 @@ if uploaded_file:
                     term_folder = drive_service.files().create(
                         body=folder_metadata,
                         fields='id',
-                        supportsAllDrives=True,
-                        includeItemsFromAllDrives=True
+                        supportsAllDrives=True
                     ).execute()
                     term_folder_id = term_folder['id']
             
@@ -226,7 +225,6 @@ if uploaded_file:
                     q=query,
                     fields="files(id, name)",
                     supportsAllDrives=True,
-                    includeItemsFromAllDrives=True
                     ).execute()
             
                     if existing_files['files']:
