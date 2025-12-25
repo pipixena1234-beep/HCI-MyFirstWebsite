@@ -125,7 +125,7 @@ if uploaded_file:
         zip_buffer.seek(0)
         st.download_button("⬇️ Download ZIP", data=zip_buffer, file_name="student_reports.zip")
 
-    # --- Upload to Google Drive with folder cleanup ---
+    # --- Upload to Google Drive with folder trashing ---
     st.subheader("📤 Upload to Google Drive")
     folder_id_input = st.text_input(
         "Enter Google Drive Folder ID",
@@ -143,7 +143,7 @@ if uploaded_file:
             for term in selected_terms:
                 term_clean = term.strip()
     
-                # --- Find all folders with the same name and delete them ---
+                # --- Find all folders with the same name and move to Trash ---
                 query = (
                     f"name='{term_clean}' and mimeType='application/vnd.google-apps.folder' "
                     f"and '{folder_id_input.strip()}' in parents and trashed=false"
@@ -155,7 +155,11 @@ if uploaded_file:
                 ).execute()
     
                 for f in response.get('files', []):
-                    drive_service.files().delete(fileId=f['id'], supportsAllDrives=True).execute()
+                    drive_service.files().update(
+                        fileId=f['id'],
+                        body={'trashed': True},
+                        supportsAllDrives=True
+                    ).execute()
     
                 # --- Create a fresh folder ---
                 folder_metadata = {
@@ -199,8 +203,9 @@ if uploaded_file:
                         supportsAllDrives=True
                     ).execute()
     
-            st.success("✅ PDFs uploaded to Google Drive successfully!")
+            st.success("✅ PDFs uploaded to Google Drive successfully (old folders moved to Trash)!")
     
         except Exception as e:
             st.error(f"Google Drive upload failed: {e}")
+
     
