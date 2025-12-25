@@ -123,15 +123,14 @@ if uploaded_file:
                     pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
 
                     pdf_bytes = BytesIO()
-                    pdf_output = pdf.output(dest='S').encode('latin-1')
-                    pdf_bytes.write(pdf_output)
+                    pdf_bytes.write(pdf.output(dest='S').encode('latin-1'))  # FPDF outputs string
                     pdf_bytes.seek(0)
-
+                    
                     file_drive = drive.CreateFile({
                         'title': f"{row['Student Name']}_report.pdf",
                         'parents': [{'id': folder_id_input}]
                     })
-                    file_drive.SetContentBinary(pdf_bytes.read())
+                    file_drive.SetContentBinary(pdf_bytes.read())  # <-- binary, do NOT decode
                     file_drive.Upload()
 
                 st.success("✅ Selected PDFs uploaded to Google Drive successfully!")
