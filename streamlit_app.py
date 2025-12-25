@@ -23,7 +23,7 @@ if uploaded_file:
 
     # --- 2. Select sheet (subject) ---
     selected_sheet = st.selectbox("Select Sheet (Subject) to generate reports for:", sheet_names)
-    df = pd.read_excel(uploaded_file, sheet_name=sheet, header=1)
+    df = pd.read_excel(uploaded_file, sheet_name=selected_sheet, header=1)
     df.columns = df.columns.str.strip()
 
     st.header(f"📄 Class Dashboard - {selected_sheet}")
