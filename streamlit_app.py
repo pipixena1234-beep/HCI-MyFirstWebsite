@@ -125,6 +125,43 @@ if uploaded_file:
                 zip_file.writestr(f"{row['Term']}/{row['Student Name'].strip()}_report.pdf", pdf_bytes.read())
         zip_buffer.seek(0)
         st.download_button("⬇️ Download ZIP", data=zip_buffer, file_name="student_reports.zip")
+
+    st.subheader("⚠️ Delete All Reports (Testing Only)")
+    delete_folder_id = st.text_input(
+        "Enter Parent Google Drive Folder ID to clear",
+        value="0ALncbMfl-gjdUk9PVA"
+    )
+    
+    if st.button("🗑️ Delete All Reports"):
+        try:
+            sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
+            credentials = service_account.Credentials.from_service_account_info(
+                sa_info, scopes=['https://www.googleapis.com/auth/drive']
+            )
+            drive_service = build('drive', 'v3', credentials=credentials)
+    
+            # List all files in the folder (recursively if needed)
+            query = f"'{delete_folder_id.strip()}' in parents and trashed=false"
+            files = drive_service.files().list(
+                q=query,
+                fields="files(id, name)",
+                supportsAllDrives=True
+            ).execute()
+    
+            deleted_count = 0
+            for f in files.get('files', []):
+                drive_service.files().update(
+                    fileId=f['id'],
+                    body={'trashed': True},
+                    supportsAllDrives=True
+                ).execute()
+                deleted_count += 1
+                time.sleep(0.2)  # give Drive time to process
+    
+            st.success(f"✅ Trashed {deleted_count} files in the folder!")
+    
+        except Exception as e:
+            st.error(f"Failed to delete reports: {e}")
         
     # =========================
     # Upload to Google Drive
@@ -228,5 +265,7 @@ if uploaded_file:
     
         except Exception as e:
             st.error(f"Google Drive upload failed: {e}")
+
+
 
     
