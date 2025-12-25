@@ -185,7 +185,7 @@ if uploaded_file:
             # Delegate to real user (must have Manager rights)
             delegated_credentials = service_account.Credentials.from_service_account_info(
                 sa_info, scopes=SCOPES
-            ).with_subject('realuser@yourdomain.com')  # <-- your real Google Workspace email
+            ).with_subject('shinhuei.lim@newera.edu.my')  # <-- your real Google Workspace email
     
             drive_service = build('drive', 'v3', credentials=delegated_credentials, cache_discovery=False)
     
