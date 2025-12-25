@@ -17,16 +17,12 @@ st.title("📊 Student Progress Report System (Flattened, Term-aware)")
 def extract_and_flatten(df_raw):
     rows = []
     i = 0
-
     while i < len(df_raw):
         cell = str(df_raw.iloc[i, 0])
-
         if cell.startswith("Term:"):
             term = cell.replace("Term:", "").strip()
             header_row = i + 2
-            headers = df_raw.iloc[header_row].tolist()
-            headers = [str(h).strip() for h in headers]
-
+            headers = [str(h).strip() for h in df_raw.iloc[header_row].tolist()]
             j = header_row + 1
             while j < len(df_raw) and pd.notna(df_raw.iloc[j, 0]):
                 row = dict(zip(headers, df_raw.iloc[j].tolist()))
@@ -36,32 +32,17 @@ def extract_and_flatten(df_raw):
             i = j
         else:
             i += 1
-
     return pd.DataFrame(rows)
-
 
 # =========================
 # Upload Excel
 # =========================
-uploaded_file = st.file_uploader(
-    "Upload Excel (.xlsx) with stacked term tables",
-    type=["xlsx"]
-)
+uploaded_file = st.file_uploader("Upload Excel (.xlsx) with stacked term tables", type=["xlsx"])
 
 if uploaded_file:
     xls = pd.ExcelFile(uploaded_file)
-
-    selected_sheet = st.selectbox(
-        "Select Sheet (Subject)",
-        xls.sheet_names
-    )
-
-    df_raw = pd.read_excel(
-        uploaded_file,
-        sheet_name=selected_sheet,
-        header=None
-    )
-
+    selected_sheet = st.selectbox("Select Sheet (Subject)", xls.sheet_names)
+    df_raw = pd.read_excel(uploaded_file, sheet_name=selected_sheet, header=None)
     df = extract_and_flatten(df_raw)
 
     if df.empty:
@@ -79,24 +60,15 @@ if uploaded_file:
     # =========================
     st.subheader("📅 Term Selection")
     select_terms = st.checkbox("Select terms to generate reports for")
-    
     all_terms = sorted(df["Term"].unique())
-    
+
     if select_terms:
-        # Add a special "Select All" option
         options_with_select_all = ["Select All"] + all_terms
-        selected_terms = st.multiselect(
-            "Available terms:",
-            options_with_select_all,
-            default=all_terms
-        )
-    
-        # Handle "Select All" logic
+        selected_terms = st.multiselect("Available terms:", options_with_select_all, default=all_terms)
         if "Select All" in selected_terms:
             selected_terms = all_terms
     else:
         selected_terms = all_terms
-
 
     df = df[df["Term"].isin(selected_terms)]
 
@@ -113,7 +85,6 @@ if uploaded_file:
         else: return "F"
 
     df["Grade"] = df["Average"].apply(grade)
-
     df["Remarks"] = df["Average"].apply(
         lambda x: "Excellent work!" if x >= 80 else
                   "Good effort, keep improving!" if x >= 70 else
@@ -125,7 +96,6 @@ if uploaded_file:
     # =========================
     st.header(f"📘 Dashboard – {selected_sheet}")
     st.dataframe(df)
-
     for term in selected_terms:
         st.subheader(f"Term: {term}")
         st.bar_chart(df[df["Term"] == term][skills].mean())
@@ -142,7 +112,7 @@ if uploaded_file:
                 pdf.set_font("Arial", "B", 16)
                 pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
                 pdf.set_font("Arial", "", 12)
-                pdf.cell(0, 8, f"Student: {row['Student Name']}", ln=True)
+                pdf.cell(0, 8, f"Student: {row['Student Name'].strip()}", ln=True)
                 for s in skills:
                     pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
                 pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
@@ -151,56 +121,46 @@ if uploaded_file:
                 pdf_bytes = BytesIO()
                 pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
                 pdf_bytes.seek(0)
-                zip_file.writestr(
-                    f"{row['Term']}/{row['Student Name']}_report.pdf",
-                    pdf_bytes.read()
-                )
+                zip_file.writestr(f"{row['Term']}/{row['Student Name'].strip()}_report.pdf", pdf_bytes.read())
         zip_buffer.seek(0)
-        st.download_button(
-            "⬇️ Download ZIP",
-            data=zip_buffer,
-            file_name="student_reports.zip"
-        )
+        st.download_button("⬇️ Download ZIP", data=zip_buffer, file_name="student_reports.zip")
+
     # =========================
     # Upload to Google Drive
     # =========================
     st.subheader("📤 Upload to Google Drive")
-    folder_id_input = st.text_input(
-        "Enter Google Drive Folder ID (Shared or My Drive)",
-        value="0ALncbMfl-gjdUk9PVA"
-    ).strip()
-    
+    folder_id_input = st.text_input("Enter Google Drive Folder ID", value="0ALncbMfl-gjdUk9PVA")
+
     if st.button("Upload to Google Drive"):
         try:
-            # Load service account credentials
             sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
             credentials = service_account.Credentials.from_service_account_info(
                 sa_info, scopes=['https://www.googleapis.com/auth/drive']
             )
             drive_service = build('drive', 'v3', credentials=credentials)
-    
+
             for term in selected_terms:
-                term_name = term.strip()
-                
+                term_clean = term.strip()
+                parent_id_clean = folder_id_input.strip()
+
                 # --- Check if term folder exists ---
+                query = (
+                    f"name='{term_clean}' and mimeType='application/vnd.google-apps.folder' "
+                    f"and '{parent_id_clean}' in parents and trashed=false"
+                )
                 response = drive_service.files().list(
-                    q=f"mimeType='application/vnd.google-apps.folder' and '{folder_id_input}' in parents and trashed=false",
+                    q=query,
                     fields="files(id, name)",
                     supportsAllDrives=True
                 ).execute()
-    
-                term_folder_id = None
-                for f in response.get('files', []):
-                    if f['name'].strip() == term_name:
-                        term_folder_id = f['id']
-                        break
-    
-                # --- Create folder if not found ---
-                if not term_folder_id:
+
+                if response.get('files'):
+                    term_folder_id = response['files'][0]['id']
+                else:
                     folder_metadata = {
-                        'name': term_name + "_reports",  # optional suffix to enforce uniqueness
+                        'name': term_clean,
                         'mimeType': 'application/vnd.google-apps.folder',
-                        'parents': [folder_id_input]
+                        'parents': [parent_id_clean]
                     }
                     term_folder = drive_service.files().create(
                         body=folder_metadata,
@@ -208,56 +168,49 @@ if uploaded_file:
                         supportsAllDrives=True
                     ).execute()
                     term_folder_id = term_folder['id']
-    
-                # --- Upload PDFs for this term ---
+
+                # --- Upload PDFs (overwrite if exists) ---
                 df_term = df[df["Term"] == term]
                 for _, row in df_term.iterrows():
-                    student_name = row['Student Name'].strip()
+                    student_name_clean = row['Student Name'].strip()
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Progress Report ({term_name})", ln=True)
+                    pdf.cell(0, 10, f"Progress Report ({term_clean})", ln=True)
                     pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f"Student: {student_name}", ln=True)
+                    pdf.cell(0, 8, f"Student: {student_name_clean}", ln=True)
                     for s in skills:
                         pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
                     pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
                     pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
                     pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
-    
+
                     pdf_bytes = BytesIO()
                     pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
                     pdf_bytes.seek(0)
                     media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
-    
-                    # --- Check if file exists and overwrite ---
-                    file_name = f"{student_name}_report.pdf"
+
+                    file_name = f"{student_name_clean}_report.pdf"
+                    query_file = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
                     existing_files = drive_service.files().list(
-                        q=f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false",
+                        q=query_file,
                         fields="files(id, name)",
                         supportsAllDrives=True
                     ).execute()
-    
-                    if existing_files['files']:
-                        # Update existing PDF
+
+                    if existing_files.get('files'):
                         file_id = existing_files['files'][0]['id']
-                        drive_service.files().update(
-                            fileId=file_id,
-                            media_body=media
-                        ).execute()
+                        drive_service.files().update(fileId=file_id, media_body=media).execute()
                     else:
-                        # Create new PDF
-                        file_metadata = {'name': file_name, 'parents':[term_folder_id]}
+                        file_metadata = {'name': file_name, 'parents': [term_folder_id]}
                         drive_service.files().create(
                             body=file_metadata,
                             media_body=media,
                             fields='id',
                             supportsAllDrives=True
                         ).execute()
-    
+
             st.success("✅ PDFs uploaded to Google Drive successfully!")
-    
+
         except Exception as e:
             st.error(f"Google Drive upload failed: {e}")
-
-
