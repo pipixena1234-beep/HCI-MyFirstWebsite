@@ -243,7 +243,7 @@ if uploaded_file:
                             media_body=media
                         ).execute()
                     else:
-                        file_metadata = {'name': file_name, 'parents':[term_folder_id]}.strip()
+                        file_metadata = {'name': file_name, 'parents':[term_folder_id]}
                         drive_service.files().create(
                             body=file_metadata,
                             media_body=media,
