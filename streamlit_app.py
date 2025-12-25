@@ -126,65 +126,15 @@ if uploaded_file:
         zip_buffer.seek(0)
         st.download_button("⬇️ Download ZIP", data=zip_buffer, file_name="student_reports.zip")
 
-    st.subheader("⚠️ Delete All Reports (Testing Only)")
-    delete_folder_id = st.text_input(
-        "Enter Parent Google Drive Folder ID to clear",
-        value="0ALncbMfl-gjdUk9PVA"
-    )
-    
-    if st.button("🗑️ Delete All Reports"):
-        try:
-            sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
-            credentials = service_account.Credentials.from_service_account_info(
-                sa_info, scopes=['https://www.googleapis.com/auth/drive']
-            )
-            drive_service = build('drive', 'v3', credentials=credentials)
-    
-            # 1. FIXED QUERY: Look for items where the parent is the ID provided
-            # We also set pageSize=1000 to catch more files in one go (default is 100)
-            query = f"'{delete_folder_id}' in parents and trashed = false"
-    
-            files = drive_service.files().list(
-                q=query,
-                pageSize=1000, 
-                includeItemsFromAllDrives=True,
-                supportsAllDrives=True,
-                fields="files(id, name)"
-            ).execute()
-    
-            items = files.get('files', [])
-    
-            if not items:
-                st.warning("Folder is already empty (or invalid ID provided).")
-            else:
-                deleted_count = 0
-                my_bar = st.progress(0)
-                
-                for i, f in enumerate(items):
-                    try:
-                        drive_service.files().update(
-                            fileId=f['id'],
-                            body={'trashed': True},
-                            supportsAllDrives=True
-                        ).execute()
-                        deleted_count += 1
-                    except Exception as e:
-                        st.error(f"Error deleting {f['name']}: {e}")
-                    
-                    # Update progress
-                    my_bar.progress((i + 1) / len(items))
-    
-                st.success(f"✅ Successfully trashed {deleted_count} files!")
-    
-        except Exception as e:
-            st.error(f"Failed to delete reports: {e}")
 
     st.subheader("📤 Upload to Google Drive")
     folder_id_input = st.text_input(
         "Enter Google Drive Folder ID",
         value="0ALncbMfl-gjdUk9PVA"
     )
-    
+    # =========================
+    # Upload to Google Drive
+    # =========================
     if st.button("Upload to Google Drive"):
         try:
             sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
