@@ -108,7 +108,7 @@ if uploaded_file:
 
     # --- 7. Upload to Google Drive per term ---
     st.subheader("📤 Upload to Google Drive")
-    folder_id_input = st.text_input("Enter parent Google Drive Folder ID for term folders:")
+    folder_id_input = "0ALncbMfl-gjdUk9PVA"
 
     if st.button("Upload to Google Drive"):
         try:
