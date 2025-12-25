@@ -1,6 +1,9 @@
-streamlit
-pandas
-matplotlib
-fpdf
-pydrive2
-oauth2client
+streamlit>=1.25.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+fpdf>=1.7.2
+pydrive2>=1.14.1
+google-api-python-client>=2.88.0
+google-auth>=2.22.0
+google-auth-oauthlib>=1.2.0
+oauth2client>=4.1.3
