@@ -141,11 +141,11 @@ if uploaded_file:
             drive_service = build('drive', 'v3', credentials=credentials)
     
             # List all files in the folder (recursively if needed)
-            query = f"'{delete_folder_id.strip()}' in parents and trashed=false"
             files = drive_service.files().list(
-                q=query,
-                fields="files(id, name)",
-                supportsAllDrives=True
+            q="name='YourFolderName' and mimeType='application/vnd.google-apps.folder'",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            fields="files(id, name)"
             ).execute()
     
             deleted_count = 0
