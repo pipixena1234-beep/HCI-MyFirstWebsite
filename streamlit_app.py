@@ -83,21 +83,20 @@ if uploaded_file:
     all_terms = sorted(df["Term"].unique())
     
     if select_terms:
-        select_all_terms = st.checkbox("Select All Terms", value=True)
-        if select_all_terms:
-            selected_terms = st.multiselect(
-                "Available terms:",
-                all_terms,
-                default=all_terms
-            )
-        else:
-            selected_terms = st.multiselect(
-                "Available terms:",
-                all_terms,
-                default=[]
-            )
+        # Add a special "Select All" option
+        options_with_select_all = ["Select All"] + all_terms
+        selected_terms = st.multiselect(
+            "Available terms:",
+            options_with_select_all,
+            default=all_terms
+        )
+    
+        # Handle "Select All" logic
+        if "Select All" in selected_terms:
+            selected_terms = all_terms
     else:
         selected_terms = all_terms
+
 
     df = df[df["Term"].isin(selected_terms)]
 
