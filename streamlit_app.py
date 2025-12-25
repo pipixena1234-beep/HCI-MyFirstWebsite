@@ -183,7 +183,12 @@ if uploaded_file:
                         'mimeType': 'application/vnd.google-apps.folder',
                         'parents':[folder_id_input]
                     }
-                    term_folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
+                    term_folder = drive_service.files().create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id',
+                    supportsAllDrives=True
+                    ).execute()
                     term_folder_id = term_folder['id']
 
                 # Upload PDFs
