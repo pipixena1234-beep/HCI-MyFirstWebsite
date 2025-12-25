@@ -125,12 +125,13 @@ if uploaded_file:
         zip_buffer.seek(0)
         st.download_button("⬇️ Download ZIP", data=zip_buffer, file_name="student_reports.zip")
 
-    # =========================
-    # Upload to Google Drive
-    # =========================
+    # --- Upload to Google Drive with folder cleanup ---
     st.subheader("📤 Upload to Google Drive")
-    folder_id_input = st.text_input("Enter Google Drive Folder ID", value="0ALncbMfl-gjdUk9PVA")
-
+    folder_id_input = st.text_input(
+        "Enter Google Drive Folder ID",
+        value="0ALncbMfl-gjdUk9PVA"
+    )
+    
     if st.button("Upload to Google Drive"):
         try:
             sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
@@ -138,79 +139,68 @@ if uploaded_file:
                 sa_info, scopes=['https://www.googleapis.com/auth/drive']
             )
             drive_service = build('drive', 'v3', credentials=credentials)
-
+    
             for term in selected_terms:
                 term_clean = term.strip()
-                parent_id_clean = folder_id_input.strip()
-
-                # --- Check if term folder exists ---
+    
+                # --- Find all folders with the same name and delete them ---
                 query = (
                     f"name='{term_clean}' and mimeType='application/vnd.google-apps.folder' "
-                    f"and '{parent_id_clean}' in parents and trashed=false"
+                    f"and '{folder_id_input.strip()}' in parents and trashed=false"
                 )
                 response = drive_service.files().list(
                     q=query,
                     fields="files(id, name)",
                     supportsAllDrives=True
                 ).execute()
-
-                if response.get('files'):
-                    term_folder_id = response['files'][0]['id']
-                else:
-                    folder_metadata = {
-                        'name': term_clean,
-                        'mimeType': 'application/vnd.google-apps.folder',
-                        'parents': [parent_id_clean]
-                    }
-                    term_folder = drive_service.files().create(
-                        body=folder_metadata,
-                        fields='id',
-                        supportsAllDrives=True
-                    ).execute()
-                    term_folder_id = term_folder['id']
-
-                # --- Upload PDFs (overwrite if exists) ---
+    
+                for f in response.get('files', []):
+                    drive_service.files().delete(fileId=f['id'], supportsAllDrives=True).execute()
+    
+                # --- Create a fresh folder ---
+                folder_metadata = {
+                    'name': term_clean,
+                    'mimeType': 'application/vnd.google-apps.folder',
+                    'parents': [folder_id_input.strip()]
+                }
+                term_folder = drive_service.files().create(
+                    body=folder_metadata,
+                    fields='id',
+                    supportsAllDrives=True
+                ).execute()
+                term_folder_id = term_folder['id']
+    
+                # --- Upload PDFs ---
                 df_term = df[df["Term"] == term]
                 for _, row in df_term.iterrows():
-                    student_name_clean = row['Student Name'].strip()
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Progress Report ({term_clean})", ln=True)
+                    pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
                     pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f"Student: {student_name_clean}", ln=True)
+                    pdf.cell(0, 8, f"Student: {row['Student Name'].strip()}", ln=True)
                     for s in skills:
                         pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
                     pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
                     pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
                     pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
-
+    
                     pdf_bytes = BytesIO()
                     pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
                     pdf_bytes.seek(0)
                     media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
-
-                    file_name = f"{student_name_clean}_report.pdf"
-                    query_file = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
-                    existing_files = drive_service.files().list(
-                        q=query_file,
-                        fields="files(id, name)",
+    
+                    file_name = f"{row['Student Name'].strip()}_report.pdf"
+                    file_metadata = {'name': file_name, 'parents':[term_folder_id]}
+                    drive_service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id',
                         supportsAllDrives=True
                     ).execute()
-
-                    if existing_files.get('files'):
-                        file_id = existing_files['files'][0]['id']
-                        drive_service.files().update(fileId=file_id, media_body=media).execute()
-                    else:
-                        file_metadata = {'name': file_name, 'parents': [term_folder_id]}
-                        drive_service.files().create(
-                            body=file_metadata,
-                            media_body=media,
-                            fields='id',
-                            supportsAllDrives=True
-                        ).execute()
-
+    
             st.success("✅ PDFs uploaded to Google Drive successfully!")
-
+    
         except Exception as e:
             st.error(f"Google Drive upload failed: {e}")
+    
