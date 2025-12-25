@@ -3,3 +3,4 @@ pandas
 matplotlib
 fpdf
 pydrive2
+oauth2client
