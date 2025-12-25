@@ -184,7 +184,7 @@ if uploaded_file:
                         'parents':[folder_id_input]
                     }
                     term_folder = drive_service.files().create(
-                    body=file_metadata,
+                    body=folder_metadata,
                     media_body=media,
                     fields='id',
                     supportsAllDrives=True
