@@ -185,7 +185,7 @@ if uploaded_file:
                     }
                     term_folder = drive_service.files().create(
                     body=folder_metadata,
-                    fields='id'
+                    fields='id',
                     supportsAllDrives=True
                     ).execute()
                     term_folder_id = term_folder['id']
