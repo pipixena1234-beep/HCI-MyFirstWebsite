@@ -181,13 +181,13 @@ if uploaded_file:
 
         
      st.subheader("📤 Upload to Google Drive")
-    folder_id_input = st.text_input(
+     folder_id_input = st.text_input(
         "Enter Google Drive Folder ID",
         value="0ALncbMfl-gjdUk9PVA"
-    )
+     )
     
-    if st.button("Upload to Google Drive"):
-        try:
+      if st.button("Upload to Google Drive"):
+           try:
             sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
             credentials = service_account.Credentials.from_service_account_info(
                 sa_info, scopes=['https://www.googleapis.com/auth/drive']
