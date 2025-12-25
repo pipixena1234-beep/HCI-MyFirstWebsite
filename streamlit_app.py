@@ -161,7 +161,6 @@ if uploaded_file:
             data=zip_buffer,
             file_name="student_reports.zip"
         )
-
     # =========================
     # Upload to Google Drive
     # =========================
@@ -260,9 +259,5 @@ if uploaded_file:
     
         except Exception as e:
             st.error(f"Google Drive upload failed: {e}")
-    
-        
-            except Exception as e:
-                st.error(f"Google Drive upload failed: {e}")
 
 
