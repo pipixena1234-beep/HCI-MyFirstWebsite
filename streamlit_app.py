@@ -192,12 +192,12 @@ if uploaded_file:
                         'parents':[folder_id_input]
                     }
                     term_folder = drive_service.files().create(
-                    body=folder_metadata,
-                    fields='id',
-                    supportsAllDrives=True
+                        body=folder_metadata,
+                        fields='id',
+                        supportsAllDrives=True
                     ).execute()
                     term_folder_id = term_folder['id']
-
+            
                 # Upload PDFs
                 df_term = df[df["Term"] == term]
                 for _, row in df_term.iterrows():
@@ -215,12 +215,33 @@ if uploaded_file:
                     pdf_bytes = BytesIO()
                     pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
                     pdf_bytes.seek(0)
-
+            
                     media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
-                    file_metadata = {'name': f"{row['Student Name'].strip()}_report.pdf", 'parents':[term_folder_id]}
-                    drive_service.files().create(body=file_metadata, media_body=media, fields='id', supportsAllDrives=True).execute()
-
+            
+                    # Check if file exists
+                    file_name = f"{row['Student Name'].strip()}_report.pdf"
+                    query = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
+                    existing_files = drive_service.files().list(q=query, fields="files(id, name)").execute()
+            
+                    if existing_files['files']:
+                        # Update existing file
+                        file_id = existing_files['files'][0]['id']
+                        drive_service.files().update(
+                            fileId=file_id,
+                            media_body=media
+                        ).execute()
+                    else:
+                        # Create new file
+                        file_metadata = {'name': file_name, 'parents':[term_folder_id]}
+                        drive_service.files().create(
+                            body=file_metadata,
+                            media_body=media,
+                            fields='id',
+                            supportsAllDrives=True
+                        ).execute()
+            
             st.success("✅ PDFs uploaded to Google Drive successfully!")
+
 
         except Exception as e:
             st.error(f"Google Drive upload failed: {e}")
