@@ -98,7 +98,7 @@ if uploaded_file:
         if st.button("Upload to Google Drive"):
             try:
                 # Load credentials from Streamlit secrets
-                sa_info = json.loads(st.secrets["google_service_account"])
+                sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
                 credentials = service_account.Credentials.from_service_account_info(
                     sa_info, scopes=['https://www.googleapis.com/auth/drive']
                 )
