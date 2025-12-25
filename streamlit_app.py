@@ -79,14 +79,23 @@ if uploaded_file:
     # =========================
     st.subheader("📅 Term Selection")
     select_terms = st.checkbox("Select terms to generate reports for")
+    
     all_terms = sorted(df["Term"].unique())
-
+    
     if select_terms:
-        selected_terms = st.multiselect(
-            "Available terms:",
-            all_terms,
-            default=all_terms
-        )
+        select_all_terms = st.checkbox("Select All Terms", value=True)
+        if select_all_terms:
+            selected_terms = st.multiselect(
+                "Available terms:",
+                all_terms,
+                default=all_terms
+            )
+        else:
+            selected_terms = st.multiselect(
+                "Available terms:",
+                all_terms,
+                default=[]
+            )
     else:
         selected_terms = all_terms
 
