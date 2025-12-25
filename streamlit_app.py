@@ -1,18 +1,16 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 from fpdf import FPDF
 from io import BytesIO
 import zipfile
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
-from oauth2client.service_account import ServiceAccountCredentials
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
+from googleapiclient.http import MediaIoBaseUpload
 
-# ------------------- Streamlit Page Config -------------------
 st.set_page_config(page_title="Student Progress Reports", layout="wide")
-st.title("📊 Student Progress Report System (Cloud-ready)")
+st.title("📊 Student Progress Report System (Google Drive API)")
 
-# ------------------- 1. CSV Upload -------------------
+# --- CSV Upload ---
 uploaded_file = st.file_uploader(
     "Upload CSV (Columns: Student Name, Logic, UI, Animation, Teamwork)",
     type=["csv"]
@@ -23,7 +21,7 @@ if uploaded_file:
     st.header("📄 Class Dashboard")
     st.dataframe(df)
 
-    # ------------------- 2. Skill-based Grading -------------------
+    # --- Skill-based grading ---
     skills = ["Logic", "UI", "Animation", "Teamwork"]
     df["Average"] = df[skills].mean(axis=1)
 
@@ -36,21 +34,16 @@ if uploaded_file:
 
     df["Grade"] = df["Average"].apply(grade)
 
-    # ------------------- 3. AI / Rule-based Remarks -------------------
+    # --- AI / Rule-based remarks ---
     def remarks(avg):
-        if avg >= 80:
-            return "Excellent work!"
-        elif avg >= 70:
-            return "Good effort, keep improving!"
-        else:
-            return "Needs improvement, focus on practice."
+        if avg >= 80: return "Excellent work!"
+        elif avg >= 70: return "Good effort, keep improving!"
+        else: return "Needs improvement, focus on practice."
 
     df["Remarks"] = df["Average"].apply(remarks)
-
-    st.subheader("Average Skills")
     st.bar_chart(df[skills].mean())
 
-    # ------------------- 4. Multi-select PDF / ZIP Download -------------------
+    # --- Multi-select PDF / ZIP download ---
     student_options = df['Student Name'].tolist()
     selected_students = st.multiselect(
         "Select students to download PDF",
@@ -59,12 +52,11 @@ if uploaded_file:
     )
 
     if selected_students:
+        # Generate ZIP
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as zip_file:
             for student in selected_students:
                 row = df[df['Student Name'] == student].iloc[0]
-
-                # Generate PDF
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font("Arial", "B", 16)
@@ -79,7 +71,6 @@ if uploaded_file:
                 pdf_bytes = BytesIO()
                 pdf_bytes.write(pdf.output(dest='S').encode('latin-1'))
                 pdf_bytes.seek(0)
-
                 zip_file.writestr(f"{row['Student Name']}_report.pdf", pdf_bytes.read())
 
         zip_buffer.seek(0)
@@ -89,29 +80,25 @@ if uploaded_file:
             file_name="student_reports.zip"
         )
 
-        # ------------------- 5. Google Drive Upload -------------------
+        # --- Google Drive Upload ---
         st.subheader("📤 Upload to Google Drive Folder")
-        folder_id_input = st.text_input(
+        folder_id = st.text_input(
             "Enter Google Drive Folder ID",
             value="1mxhb5P7qob_lhfXdMeC2HWwKP9lDahmU"
         )
 
         if st.button("Upload selected PDFs to Google Drive"):
             try:
-                # Load service account credentials directly from file
-                SERVICE_ACCOUNT_FILE = "service_account.json"  # ensure it's in same folder
-                credentials = ServiceAccountCredentials.from_json_keyfile_name(
-                    SERVICE_ACCOUNT_FILE,
-                    scopes=["https://www.googleapis.com/auth/drive"]
+                # Authenticate with service account
+                SERVICE_ACCOUNT_FILE = "service_account.json"  # must be in same folder
+                SCOPES = ['https://www.googleapis.com/auth/drive']
+                credentials = service_account.Credentials.from_service_account_file(
+                    SERVICE_ACCOUNT_FILE, scopes=SCOPES
                 )
-
-                gauth = GoogleAuth()
-                gauth.credentials = credentials
-                drive = GoogleDrive(gauth)
+                service = build('drive', 'v3', credentials=credentials)
 
                 for student in selected_students:
                     row = df[df['Student Name'] == student].iloc[0]
-
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
@@ -127,12 +114,17 @@ if uploaded_file:
                     pdf_bytes.write(pdf.output(dest='S').encode('latin-1'))
                     pdf_bytes.seek(0)
 
-                    file_drive = drive.CreateFile({
-                        'title': f"{row['Student Name']}_report.pdf",
-                        'parents': [{'id': folder_id_input}]
-                    })
-                    file_drive.SetContentBinary(pdf_bytes.read())  # use binary
-                    file_drive.Upload()
+                    media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf')
+                    file_metadata = {
+                        'name': f"{row['Student Name']}_report.pdf",
+                        'parents': [folder_id]
+                    }
+
+                    service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id'
+                    ).execute()
 
                 st.success("✅ Selected PDFs uploaded to Google Drive successfully!")
 
