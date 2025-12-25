@@ -92,7 +92,7 @@ if uploaded_file:
         st.subheader("📤 Upload Selected PDFs to Google Drive")
         folder_id_input = st.text_input(
             "Enter Google Drive Folder ID",
-            value="YOUR_FOLDER_ID_HERE"
+            value="0ALncbMfl-gjdUk9PVA"
         )
 
         if st.button("Upload to Google Drive"):
@@ -130,9 +130,10 @@ if uploaded_file:
                     }
 
                     drive_service.files().create(
-                        body=file_metadata,
-                        media_body=media,
-                        fields='id'
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id',
+                    supportsAllDrives=True
                     ).execute()
 
                 st.success("✅ PDFs uploaded to Google Drive successfully!")
