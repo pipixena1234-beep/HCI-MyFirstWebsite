@@ -9,20 +9,26 @@ from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
 
 st.set_page_config(page_title="Student Progress Reports", layout="wide")
-st.title("📊 Student Progress Report System (Cloud-ready)")
+st.title("📊 Student Progress Report System (Term-wise, Cloud-ready)")
 
-# --- 1. CSV Upload ---
+# --- 1. Upload Excel file ---
 uploaded_file = st.file_uploader(
-    "Upload CSV (Columns: Student Name, Logic, UI, Animation, Teamwork)",
-    type=["csv"]
+    "Upload Excel file (.xlsx) with multiple sheets",
+    type=["xlsx"]
 )
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.header("📄 Class Dashboard")
+    xls = pd.ExcelFile(uploaded_file)
+    sheet_names = xls.sheet_names
+
+    # --- 2. Select sheet (subject) ---
+    selected_sheet = st.selectbox("Select Sheet (Subject) to generate reports for:", sheet_names)
+    df = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
+
+    st.header(f"📄 Class Dashboard - {selected_sheet}")
     st.dataframe(df)
 
-    # --- 2. Skill-based grading ---
+    # --- 3. Skill-based grading ---
     skills = ["Logic", "UI", "Animation", "Teamwork"]
     df["Average"] = df[skills].mean(axis=1)
 
@@ -35,106 +41,103 @@ if uploaded_file:
 
     df["Grade"] = df["Average"].apply(grade)
 
-    # --- 3. AI / Rule-based remarks ---
     def remarks(avg):
-        if avg >= 80:
-            return "Excellent work!"
-        elif avg >= 70:
-            return "Good effort, keep improving!"
-        else:
-            return "Needs improvement, focus on practice."
+        if avg >= 80: return "Excellent work!"
+        elif avg >= 70: return "Good effort, keep improving!"
+        else: return "Needs improvement, focus on practice."
 
     df["Remarks"] = df["Average"].apply(remarks)
 
-    st.subheader("Average Skills")
-    st.bar_chart(df[skills].mean())
+    # --- 4. Select terms ---
+    if "Term" not in df.columns:
+        st.warning("Your sheet must have a 'Term' column to select terms.")
+    else:
+        select_term_checkbox = st.checkbox("Select terms to generate reports for")
+        if select_term_checkbox:
+            terms = df['Term'].unique().tolist()
+            selected_terms = st.multiselect("Available terms:", terms, default=terms)
+        else:
+            selected_terms = df['Term'].unique().tolist()
 
-    # --- 4. Multi-select PDF / ZIP download ---
-    student_options = df['Student Name'].tolist()
-    selected_students = st.multiselect(
-        "Select students to generate PDFs",
-        options=student_options,
-        default=student_options
-    )
+        # --- 5. Show dashboard per term ---
+        for term in selected_terms:
+            st.subheader(f"Term: {term}")
+            df_term = df[df['Term'] == term]
+            st.dataframe(df_term)
+            st.bar_chart(df_term[skills].mean())
 
-    if selected_students:
-        zip_buffer = BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-            for student in selected_students:
-                row = df[df['Student Name'] == student].iloc[0]
+        # --- 6. Generate PDFs and ZIP ---
+        if st.button("Generate PDFs for selected terms"):
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+                for term in selected_terms:
+                    df_term = df[df['Term'] == term]
+                    for _, row in df_term.iterrows():
+                        pdf = FPDF()
+                        pdf.add_page()
+                        pdf.set_font("Arial", "B", 16)
+                        pdf.cell(0, 10, f"Progress Report: {row['Student Name']}", ln=True)
+                        pdf.set_font("Arial", "", 12)
+                        for skill in skills:
+                            pdf.cell(0, 8, f"{skill}: {row[skill]}", ln=True)
+                        pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
+                        pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
+                        pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+                        pdf_bytes = BytesIO()
+                        pdf_bytes.write(pdf.output(dest='S').encode('latin-1'))
+                        pdf_bytes.seek(0)
+                        zip_file.writestr(f"{term}/{row['Student Name']}_report.pdf", pdf_bytes.read())
 
-                # Generate PDF
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("Arial", "B", 16)
-                pdf.cell(0, 10, f"Progress Report: {row['Student Name']}", ln=True)
-                pdf.set_font("Arial", "", 12)
-                for skill in skills:
-                    pdf.cell(0, 8, f"{skill}: {row[skill]}", ln=True)
-                pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
-                pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
-                pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+            zip_buffer.seek(0)
+            st.download_button(
+                "📦 Download ZIP of PDFs",
+                data=zip_buffer,
+                file_name="student_reports_by_term.zip"
+            )
 
-                pdf_bytes = BytesIO()
-                pdf_bytes.write(pdf.output(dest='S').encode('latin-1'))
-                pdf_bytes.seek(0)
-
-                zip_file.writestr(f"{row['Student Name']}_report.pdf", pdf_bytes.read())
-
-        zip_buffer.seek(0)
-        st.download_button(
-            "📦 Download PDFs for Selected Students (ZIP)",
-            data=zip_buffer,
-            file_name="student_reports.zip"
-        )
-
-        # --- 5. Google Drive upload ---
-        st.subheader("📤 Upload Selected PDFs to Google Drive")
-        folder_id_input = st.text_input(
-            "Enter Google Drive Folder ID",
-            value="0ALncbMfl-gjdUk9PVA"
-        )
+        # --- 7. Upload to Google Drive per term ---
+        st.subheader("📤 Upload to Google Drive")
+        folder_id_input = st.text_input("Enter parent Google Drive Folder ID for term folders:")
 
         if st.button("Upload to Google Drive"):
             try:
-                # Load credentials from Streamlit secrets
                 sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
                 credentials = service_account.Credentials.from_service_account_info(
                     sa_info, scopes=['https://www.googleapis.com/auth/drive']
                 )
                 drive_service = build('drive', 'v3', credentials=credentials)
 
-                for student in selected_students:
-                    row = df[df['Student Name'] == student].iloc[0]
+                for term in selected_terms:
+                    # Check or create folder for term
+                    query = f"name='{term}' and mimeType='application/vnd.google-apps.folder' and '{folder_id_input}' in parents"
+                    response = drive_service.files().list(q=query, fields="files(id, name)").execute()
+                    if response['files']:
+                        term_folder_id = response['files'][0]['id']
+                    else:
+                        folder_metadata = {'name': term, 'mimeType': 'application/vnd.google-apps.folder', 'parents':[folder_id_input]}
+                        term_folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
+                        term_folder_id = term_folder['id']
 
-                    # Generate PDF again
-                    pdf = FPDF()
-                    pdf.add_page()
-                    pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Progress Report: {row['Student Name']}", ln=True)
-                    pdf.set_font("Arial", "", 12)
-                    for skill in skills:
-                        pdf.cell(0, 8, f"{skill}: {row[skill]}", ln=True)
-                    pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
-                    pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
-                    pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+                    # Upload PDFs
+                    df_term = df[df['Term'] == term]
+                    for _, row in df_term.iterrows():
+                        pdf = FPDF()
+                        pdf.add_page()
+                        pdf.set_font("Arial", "B", 16)
+                        pdf.cell(0, 10, f"Progress Report: {row['Student Name']}", ln=True)
+                        pdf.set_font("Arial", "", 12)
+                        for skill in skills:
+                            pdf.cell(0, 8, f"{skill}: {row[skill]}", ln=True)
+                        pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
+                        pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
+                        pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+                        pdf_bytes = BytesIO()
+                        pdf_bytes.write(pdf.output(dest='S').encode('latin-1'))
+                        pdf_bytes.seek(0)
 
-                    pdf_bytes = BytesIO()
-                    pdf_bytes.write(pdf.output(dest='S').encode('latin-1'))
-                    pdf_bytes.seek(0)
-
-                    media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
-                    file_metadata = {
-                        'name': f"{row['Student Name']}_report.pdf",
-                        'parents': [folder_id_input]
-                    }
-
-                    drive_service.files().create(
-                    body=file_metadata,
-                    media_body=media,
-                    fields='id',
-                    supportsAllDrives=True
-                    ).execute()
+                        media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
+                        file_metadata = {'name': f"{row['Student Name']}_report.pdf", 'parents':[term_folder_id]}
+                        drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
                 st.success("✅ PDFs uploaded to Google Drive successfully!")
 
