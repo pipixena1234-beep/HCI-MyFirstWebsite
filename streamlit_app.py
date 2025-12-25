@@ -198,7 +198,7 @@ if uploaded_file:
                     folder_metadata = {
                         'name': term.strip(),
                         'mimeType': 'application/vnd.google-apps.folder',
-                        'parents': [folder_id_input]
+                        'parents': [folder_id_input].strip()
                     }
                     term_folder = drive_service.files().create(
                         body=folder_metadata,
@@ -229,7 +229,7 @@ if uploaded_file:
     
                     # --- Check if file exists and overwrite ---
                     file_name = f"{row['Student Name'].strip()}_report.pdf"
-                    query_file = f"name='{file_name}' and '{term_folder_id}'.strip() in parents and trashed=false"
+                    query_file = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
                     existing_files = drive_service.files().list(
                         q=query_file,
                         fields="files(id, name)",
