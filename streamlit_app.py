@@ -22,27 +22,41 @@ st.title("📊 Student Progress Report System (Flattened, Term-aware)")
 def push_schedule_to_github(new_datetime_str):
     url = f"https://api.github.com/repos/{repo}/contents/{path}"
     st.write(f"DEBUG: Attempting to connect to: {url}")
-    token = st.secrets["GITHUB_TOKEN"]
     # Update this with your actual GitHub username and repo name
     repo = "pipixena1234-beep/HCI-MyFirstWebsite" 
     path = "schedule.json"
     
-    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    try:
+        token = st.secrets["GITHUB_TOKEN"]
+    except KeyError:
+        st.error("GITHUB_TOKEN not found in Streamlit Secrets!")
+        return 500
+
+    url = f"https://api.github.com/repos/{repo_name}/contents/{file_path}"
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
     }
 
-    # 1. Get the current file to get its SHA (required for updates)
+    # 1. Get the current file (to get the SHA)
     get_res = requests.get(url, headers=headers)
-    sha = get_res.json().get("sha") if get_res.status_code == 200 else None
+    sha = None
+    
+    if get_res.status_code == 200:
+        sha = get_res.json().get("sha")
+    elif get_res.status_code == 404:
+        # This is okay! It means the file doesn't exist yet.
+        sha = None 
+    else:
+        st.error(f"GitHub API Error: {get_res.status_code}")
+        return get_res.status_code
 
-    # 2. Prepare the new file content
+    # 2. Prepare content
     content_dict = {"target_datetime": new_datetime_str}
-    content_json = json.dumps(content_dict, indent=4)
-    encoded_content = base64.b64encode(content_json.encode()).decode()
+    json_string = json.dumps(content_dict, indent=4)
+    encoded_content = base64.b64encode(json_string.encode()).decode()
 
-    # 3. Send the update request
+    # 3. Push to GitHub
     payload = {
         "message": f"Update schedule to {new_datetime_str} [skip ci]",
         "content": encoded_content
