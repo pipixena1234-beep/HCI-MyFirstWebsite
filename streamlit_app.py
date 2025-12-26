@@ -23,6 +23,9 @@ def push_schedule_to_github(new_datetime_str):
     # Update this with your actual GitHub username and repo name
     repo_name = "pipixena1234-beep/HCI-MyFirstWebsite" 
     file_path = "schedule.json"
+
+    url = f"https://api.github.com/repos/{repo_name}/contents/{file_path}"
+    st.write(f"DEBUG: Attempting to connect to: {url}")
     
     try:
         token = st.secrets["GITHUB_TOKEN"]
@@ -44,6 +47,7 @@ def push_schedule_to_github(new_datetime_str):
         sha = get_res.json().get("sha")
     elif get_res.status_code == 404:
         # This is okay! It means the file doesn't exist yet.
+        st.info("File not found on GitHub. Creating it for the first time...")
         sha = None 
     else:
         st.error(f"GitHub API Error: {get_res.status_code}")
