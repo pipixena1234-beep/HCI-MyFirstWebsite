@@ -23,9 +23,6 @@ def push_schedule_to_github(new_datetime_str):
     # Update this with your actual GitHub username and repo name
     repo_name = "pipixena1234-beep/HCI-MyFirstWebsite" 
     file_path = "schedule.json"
-
-    url = f"https://api.github.com/repos/{repo_name}/contents/{file_path}"
-    st.write(f"DEBUG: Attempting to connect to: {url}")
     
     try:
         token = st.secrets["GITHUB_TOKEN"]
