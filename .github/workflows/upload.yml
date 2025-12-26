@@ -25,4 +25,5 @@ jobs:
         env:
           GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}
           GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          DATA_EXCEL_FILE_ID: ${{ secrets.DATA_EXCEL_FILE_ID }}
         run: python automated_upload.py
