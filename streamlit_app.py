@@ -17,24 +17,52 @@ st.title("📊 Student Progress Report System (Flattened, Term-aware)")
 # Report Generation Automation - Date Selection
 # =====================================
 
-st.sidebar.header("⏰ Schedule Automation")
-scheduled_date = st.sidebar.date_input("Select Date", datetime.now())
-scheduled_time = st.sidebar.time_input("Select Time", datetime.now())
-
-# Combine date and time
-target_dt = datetime.combine(scheduled_date, scheduled_time)
-target_str = target_dt.strftime("%Y-%m-%d %H:%M")
-
-if st.sidebar.button("Save Schedule"):
-    schedule_data = {"target_datetime": target_str}
+def push_schedule_to_github(new_datetime_str):
+    token = st.secrets["GITHUB_TOKEN"]
+    # Update this with your actual GitHub username and repo name
+    repo = "pipixena1234-beep/HCI-MyFirstWebsite" 
+    path = "schedule.json"
     
-    # In a real GitHub environment, you would need to commit this file.
-    # For now, this saves it locally for testing:
-    with open("schedule.json", "w") as f:
-        json.dump(schedule_data, f)
-    
-    st.sidebar.success(f"Target set for {target_str}")
-    st.sidebar.info("Note: Ensure you commit schedule.json to GitHub for the Action to see it.")
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # 1. Get the current file to get its SHA (required for updates)
+    get_res = requests.get(url, headers=headers)
+    sha = get_res.json().get("sha") if get_res.status_code == 200 else None
+
+    # 2. Prepare the new file content
+    content_dict = {"target_datetime": new_datetime_str}
+    content_json = json.dumps(content_dict, indent=4)
+    encoded_content = base64.b64encode(content_json.encode()).decode()
+
+    # 3. Send the update request
+    payload = {
+        "message": f"Update schedule to {new_datetime_str} [skip ci]",
+        "content": encoded_content
+    }
+    if sha:
+        payload["sha"] = sha
+
+    put_res = requests.put(url, json=payload, headers=headers)
+    return put_res.status_code
+
+# --- In your Sidebar UI ---
+st.sidebar.subheader("⏰ Automation Schedule")
+date_pick = st.sidebar.date_input("Target Date", datetime.now())
+time_pick = st.sidebar.time_input("Target Time", datetime.now())
+
+target_str = f"{date_pick.strftime('%Y-%m-%d')} {time_pick.strftime('%H:%M')}"
+
+if st.sidebar.button("Update GitHub Schedule"):
+    with st.spinner("Pushing to GitHub..."):
+        status = push_schedule_to_github(target_str)
+        if status in [200, 201]:
+            st.sidebar.success(f"✅ GitHub updated to {target_str}!")
+        else:
+            st.sidebar.error(f"❌ Failed to update. Error code: {status}")
 
 
 # =====================================
