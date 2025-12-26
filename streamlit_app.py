@@ -13,7 +13,7 @@ import requests  # <--- THIS WAS MISSING
 import base64    # <--- ALSO NEEDED FOR THE GITHUB API
 
 st.set_page_config(page_title="Student Progress Reports", layout="wide")
-st.title("📊 Student Progress Report System (Flattened, Term-aware)")
+st.title("📊 Student Progress Report System")
 
 # =====================================
 # Report Generation Automation - Date Selection
