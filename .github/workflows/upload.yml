@@ -1,21 +1,27 @@
-name: Auto Upload Reports
+name: Scheduled Report Upload (5-Min Test)
+
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs every day at midnight
-  workflow_dispatch: # Allows manual run
+    - cron: '*/5 * * * *'  # Runs every 5 minutes
+  workflow_dispatch:       # Allows manual testing in the Actions tab
 
 jobs:
-  upload:
+  run-upload:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Install Dependencies
-        run: pip install pandas fpdf2 google-api-python-client google-auth openpyxl
-      - name: Run Script
+        run: |
+          pip install -r requirements.txt
+
+      - name: Execute Upload Script
         env:
           GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}
           GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
