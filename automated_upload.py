@@ -3,7 +3,6 @@ import json
 import pandas as pd
 from datetime import datetime, timedelta
 from fpdf import FPDF
-import io  # <--- MISSING IMPORT FIXED
 from io import BytesIO
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
@@ -67,13 +66,15 @@ def main():
     # --- NEW: Download data.xlsx from Drive instead of reading from Repo ---
     print("📥 Downloading data.xlsx from Google Drive...")
     request = drive_service.files().get_media(fileId=data_file_id)
-    fh = io.BytesIO()
+    
+    fh = BytesIO() # No 'io.' prefix needed anymore
     downloader = MediaIoBaseDownload(fh, request)
     done = False
     while done is False:
         status, done = downloader.next_chunk()
     
     fh.seek(0)
+
     # Read directly from the byte stream
     xls = pd.ExcelFile(fh)
 
