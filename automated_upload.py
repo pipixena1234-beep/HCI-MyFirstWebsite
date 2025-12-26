@@ -3,11 +3,11 @@ import json
 import pandas as pd
 from datetime import datetime, timedelta
 from fpdf import FPDF
+import io  # <--- MISSING IMPORT FIXED
 from io import BytesIO
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
-import io  # <--- MISSING IMPORT FIXED
 
 # --- Helper: Flatten Logic (Same as your Streamlit version) ---
 def extract_and_flatten(df_raw):
