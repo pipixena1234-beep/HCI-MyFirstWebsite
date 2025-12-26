@@ -8,9 +8,34 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
 import time
+from datetime import datetime
 
 st.set_page_config(page_title="Student Progress Reports", layout="wide")
 st.title("📊 Student Progress Report System (Flattened, Term-aware)")
+
+# =====================================
+# Report Generation Automation - Date Selection
+# =====================================
+
+st.sidebar.header("⏰ Schedule Automation")
+scheduled_date = st.sidebar.date_input("Select Date", datetime.now())
+scheduled_time = st.sidebar.time_input("Select Time", datetime.now())
+
+# Combine date and time
+target_dt = datetime.combine(scheduled_date, scheduled_time)
+target_str = target_dt.strftime("%Y-%m-%d %H:%M")
+
+if st.sidebar.button("Save Schedule"):
+    schedule_data = {"target_datetime": target_str}
+    
+    # In a real GitHub environment, you would need to commit this file.
+    # For now, this saves it locally for testing:
+    with open("schedule.json", "w") as f:
+        json.dump(schedule_data, f)
+    
+    st.sidebar.success(f"Target set for {target_str}")
+    st.sidebar.info("Note: Ensure you commit schedule.json to GitHub for the Action to see it.")
+
 
 # =====================================
 # Parse stacked tables → ONE clean table
