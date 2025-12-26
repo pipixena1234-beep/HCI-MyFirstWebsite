@@ -56,18 +56,32 @@ def main():
     # 2. Setup Google Drive
     sa_info = json.loads(os.environ["GDRIVE_SERVICE_ACCOUNT"])
     folder_id = os.environ["GDRIVE_FOLDER_ID"]
+    data_file_id = os.environ["DATA_EXCEL_FILE_ID"]
     
     creds = service_account.Credentials.from_service_account_info(
         sa_info, scopes=['https://www.googleapis.com/auth/drive']
     )
     drive_service = build('drive', 'v3', credentials=creds)
 
+    # --- NEW: Download data.xlsx from Drive instead of reading from Repo ---
+    print("📥 Downloading data.xlsx from Google Drive...")
+    request = drive_service.files().get_media(fileId=data_file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+    
+    fh.seek(0)
+    # Read directly from the byte stream
+    xls = pd.ExcelFile(fh)
+
     # 3. Process Excel (Ensure 'data.xlsx' is in your repo or accessible)
     excel_file = "data.xlsx" 
     if not os.path.exists(excel_file):
         print(f"❌ Excel file {excel_file} not found!")
         return
-
+        
     xls = pd.ExcelFile(excel_file)
     sheet_name = xls.sheet_names[0]
     df_raw = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
