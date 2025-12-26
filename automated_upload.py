@@ -7,6 +7,43 @@ from io import BytesIO
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 from google.oauth2 import service_account
+import requests
+import base64
+
+def update_github_file(new_date_str):
+    # You need a GitHub Personal Access Token (PAT) saved in st.secrets
+    token = st.secrets["GITHUB_TOKEN"]
+    repo = "YourUsername/HCI-MyFirstWebsite" # Change to your repo name
+    path = "schedule.json"
+    
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    headers = {"Authorization": f"token {token}"}
+    
+    # 1. Get the current file (to get its 'sha' fingerprint)
+    r = requests.get(url, headers=headers)
+    sha = r.json().get("sha")
+    
+    # 2. Prepare the new content
+    content_dict = {"target_datetime": new_date_str}
+    content_json = json.dumps(content_dict)
+    content_encoded = base64.b64encode(content_json.encode()).decode()
+    
+    # 3. Push to GitHub
+    data = {
+        "message": "Update schedule via Streamlit UI",
+        "content": content_encoded,
+        "sha": sha
+    }
+    res = requests.put(url, json=data, headers=headers)
+    return res.status_code
+
+# --- In your UI Logic ---
+if st.sidebar.button("Save Schedule"):
+    status = update_github_file(target_str)
+    if status == 200:
+        st.sidebar.success("✅ GitHub updated!")
+    else:
+        st.sidebar.error("❌ Failed to update GitHub.")
 
 # --- Helper: Flatten Logic (Same as your Streamlit version) ---
 def extract_and_flatten(df_raw):
