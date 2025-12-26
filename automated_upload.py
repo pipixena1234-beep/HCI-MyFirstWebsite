@@ -74,14 +74,15 @@ def main():
         status, done = downloader.next_chunk()
     
     fh.seek(0)
-
-    # Read directly from the byte stream
-    xls = pd.ExcelFile(fh)
-
-    # 3. Process Excel (Ensure 'data.xlsx' is in your repo or accessible)
-    excel_file = "data.xlsx" 
-    if not os.path.exists(excel_file):
-        print(f"❌ Excel file {excel_file} not found!")
+    
+    # Process with pandas
+    try:
+        xls = pd.ExcelFile(fh, engine='openpyxl')
+        sheet_name = xls.sheet_names[0]
+        df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=None)
+        print(f"✅ Data loaded from sheet: {sheet_name}")
+    except Exception as e:
+        print(f"❌ Failed to read Excel: {e}")
         return
         
     xls = pd.ExcelFile(excel_file)
