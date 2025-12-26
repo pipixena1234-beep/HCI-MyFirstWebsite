@@ -7,8 +7,6 @@ from io import BytesIO
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 from google.oauth2 import service_account
-import requests
-import base64
 
 # --- Helper: Flatten Logic (Same as your Streamlit version) ---
 def extract_and_flatten(df_raw):
