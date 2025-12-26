@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 from google.oauth2 import service_account
 
-# --- Helper: Flatten Logic (Same as your Streamlit version) ---
+# --- Helper: Flatten Logic ---
 def extract_and_flatten(df_raw):
     rows = []
     i = 0
@@ -17,6 +17,9 @@ def extract_and_flatten(df_raw):
         if cell.startswith("Term:"):
             term = cell.replace("Term:", "").strip()
             header_row = i + 2
+            # Handle empty sheets or malformed headers
+            if header_row >= len(df_raw):
+                break
             headers = [str(h).strip() for h in df_raw.iloc[header_row].tolist()]
             j = header_row + 1
             while j < len(df_raw) and pd.notna(df_raw.iloc[j, 0]):
@@ -38,10 +41,8 @@ def main():
     with open("schedule.json", "r") as f:
         config = json.load(f)
     
-    target_str = config.get("target_datetime") # Format: "2025-12-30 14:30"
+    target_str = config.get("target_datetime")
     target_dt = datetime.strptime(target_str, "%Y-%m-%d %H:%M")
-    
-    # Malaysia Time (UTC+8) adjustment for GitHub Runners
     now_local = datetime.utcnow() + timedelta(hours=8)
     
     print(f"⏰ Current Local Time: {now_local.strftime('%Y-%m-%d %H:%M')}")
@@ -63,11 +64,10 @@ def main():
     )
     drive_service = build('drive', 'v3', credentials=creds)
 
-    # --- NEW: Download data.xlsx from Drive instead of reading from Repo ---
+    # 3. Download data.xlsx
     print("📥 Downloading data.xlsx from Google Drive...")
     request = drive_service.files().get_media(fileId=data_file_id)
-    
-    fh = BytesIO() # No 'io.' prefix needed anymore
+    fh = BytesIO()
     downloader = MediaIoBaseDownload(fh, request)
     done = False
     while done is False:
@@ -75,49 +75,65 @@ def main():
     
     fh.seek(0)
     
-    # Process with pandas
+    # 4. Process Every Sheet
     try:
         xls = pd.ExcelFile(fh, engine='openpyxl')
-        sheet_name = xls.sheet_names[0]
-        df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=None)
-        print(f"✅ Data loaded from sheet: {sheet_name}")
+        print(f"📂 Found sheets: {xls.sheet_names}")
     except Exception as e:
         print(f"❌ Failed to read Excel: {e}")
         return
-        
-    df = extract_and_flatten(df_raw)
 
     skills = ["Logic", "UI", "Animation", "Teamwork"]
-    df[skills] = df[skills].apply(pd.to_numeric)
-    df["Average"] = df[skills].mean(axis=1)
-    df["Grade"] = df["Average"].apply(lambda x: "A" if x>=80 else "B" if x>=70 else "C" if x>=60 else "D" if x>=50 else "F")
-    df["Remarks"] = "Report Generated Automatically"
 
-    # 4. Upload Logic
-    for term in df["Term"].unique():
-        term_clean = term.strip()
-        
-        # Folder Check/Create
-        query = f"name='{term_clean}' and mimeType='application/vnd.google-apps.folder' and '{folder_id}' in parents and trashed=false"
-        res = drive_service.files().list(q=query, fields="files(id)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
-        folders = res.get('files', [])
-        term_folder_id = folders[0]['id'] if folders else drive_service.files().create(
-            body={'name': term_clean, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [folder_id]},
-            fields='id', supportsAllDrives=True).execute()['id']
+    for sheet_name in xls.sheet_names:
+        print(f"📖 Processing Subject: {sheet_name}")
+        df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=None)
+        df = extract_and_flatten(df_raw)
 
-        df_term = df[df["Term"] == term]
-        for _, row in df_term.iterrows():
-            student_name = row['Student Name'].strip()
+        if df.empty:
+            print(f"⚠️ No student data found in {sheet_name}, skipping...")
+            continue
+
+        # Data Cleaning
+        df[skills] = df[skills].apply(pd.to_numeric, errors='coerce').fillna(0)
+        df["Average"] = df[skills].mean(axis=1)
+        df["Grade"] = df["Average"].apply(lambda x: "A" if x>=80 else "B" if x>=70 else "C" if x>=60 else "D" if x>=50 else "F")
+
+        # 5. Upload Logic per Student in this Sheet
+        for _, row in df.iterrows():
+            student_name = str(row['Student Name']).strip()
+            term_clean = str(row['Term']).strip()
+            
+            # Create/Get Term Folder
+            query = f"name='{term_clean}' and mimeType='application/vnd.google-apps.folder' and '{folder_id}' in parents and trashed=false"
+            res = drive_service.files().list(q=query, fields="files(id)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
+            folders = res.get('files', [])
+            
+            if folders:
+                term_folder_id = folders[0]['id']
+            else:
+                term_folder_id = drive_service.files().create(
+                    body={'name': term_clean, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [folder_id]},
+                    fields='id', supportsAllDrives=True).execute()['id']
+
+            # Unique filename: Subject_Student_report.pdf
             file_name = f"{sheet_name}_{student_name}_report.pdf"
             
             # PDF Creation
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", "B", 16)
-            pdf.cell(0, 10, f"Progress Report: {student_name}", ln=True)
+            pdf.cell(0, 10, f"Subject: {sheet_name}", ln=True, align='C')
+            pdf.cell(0, 10, f"Progress Report: {student_name}", ln=True, align='C')
+            pdf.ln(5)
+            
             pdf.set_font("Arial", "", 12)
+            pdf.cell(0, 10, f"Term: {term_clean}", ln=True)
             for s in skills:
-                pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
+                pdf.cell(0, 8, f"{s}: {int(row[s])}", ln=True)
+            pdf.ln(2)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
             pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
 
             pdf_bytes = BytesIO()
@@ -125,7 +141,7 @@ def main():
             pdf_bytes.seek(0)
             media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
 
-            # Overwrite Check
+            # Overwrite/Create File on Drive
             q_file = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
             f_res = drive_service.files().list(q=q_file, fields="files(id)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
             exist_f = f_res.get('files', [])
