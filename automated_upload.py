@@ -1,13 +1,37 @@
 import os
 import json
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from fpdf import FPDF
 from io import BytesIO
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
 
+def run_automation():
+    # --- 1. DATETIME CHECK ---
+    if os.path.exists("schedule.json"):
+        with open("schedule.json", "r") as f:
+            config = json.load(f)
+        
+        target_str = config.get("target_datetime")
+        # Convert string from JSON to a python datetime object
+        target_dt = datetime.strptime(target_str, "%Y-%m-%d %H:%M")
+        
+        # Get Current Time (Adjusted for Malaysia UTC+8)
+        # GitHub runners use UTC, so we add 8 hours to get your local time
+        now_local = datetime.utcnow() + timedelta(hours=8)
+        
+        if now_local < target_dt:
+            print(f"Current local time is {now_local.strftime('%Y-%m-%d %H:%M')}.")
+            print(f"Target is {target_str}. Too early! Skipping.")
+            return
+        else:
+            print(f"Time reached! Starting upload process...")
+    else:
+        print("No schedule.json found. Skipping.")
+        return
+        
 def extract_and_flatten(df_raw):
     rows = []
     i = 0
