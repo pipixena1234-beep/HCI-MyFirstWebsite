@@ -13,7 +13,7 @@ import base64
 def update_github_file(new_date_str):
     # You need a GitHub Personal Access Token (PAT) saved in st.secrets
     token = st.secrets["GITHUB_TOKEN"]
-    repo = "YourUsername/HCI-MyFirstWebsite" # Change to your repo name
+    repo = "pipixena1234-beep/HCI-MyFirstWebsite" # Change to your repo name
     path = "schedule.json"
     
     url = f"https://api.github.com/repos/{repo}/contents/{path}"
