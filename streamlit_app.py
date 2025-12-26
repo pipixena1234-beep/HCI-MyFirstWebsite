@@ -209,7 +209,7 @@ if uploaded_file:
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Progress Report ({term_clean})", ln=True)
+                    pdf.cell(0, 10, f"Progress Report ({selected_sheet}_{term_clean})", ln=True)
                     pdf.set_font("Arial", "", 12)
                     pdf.cell(0, 8, f"Student: {student_name}", ln=True)
                     for s in skills:
@@ -223,7 +223,7 @@ if uploaded_file:
                     pdf_bytes.seek(0)
                     media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
     
-                    file_name = f"{student_name}_report.pdf"
+                    file_name = f"{selected_sheet}_{student_name}_report.pdf"
     
                     # --- UPLOAD ---
                     # Since we just created a NEW empty folder, we don't need to check 
