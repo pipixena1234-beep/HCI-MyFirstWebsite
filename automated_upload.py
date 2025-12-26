@@ -85,9 +85,6 @@ def main():
         print(f"❌ Failed to read Excel: {e}")
         return
         
-    xls = pd.ExcelFile(excel_file)
-    sheet_name = xls.sheet_names[0]
-    df_raw = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
     df = extract_and_flatten(df_raw)
 
     skills = ["Logic", "UI", "Animation", "Teamwork"]
