@@ -20,6 +20,8 @@ st.title("📊 Student Progress Report System (Flattened, Term-aware)")
 # =====================================
 
 def push_schedule_to_github(new_datetime_str):
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    st.write(f"DEBUG: Attempting to connect to: {url}")
     token = st.secrets["GITHUB_TOKEN"]
     # Update this with your actual GitHub username and repo name
     repo = "pipixena1234-beep/HCI-MyFirstWebsite" 
