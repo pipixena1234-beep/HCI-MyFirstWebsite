@@ -2,7 +2,7 @@ name: Scheduled Report Upload (5-Min Test)
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Runs every 5 minutes
+    - cron: '*/7 * * * *'  # Runs every 7 minutes
   workflow_dispatch:      # Allows manual testing in the Actions tab
 
 # This allows the keepalive-workflow to "poke" the repo to keep it active
