@@ -106,20 +106,20 @@ def extract_and_flatten(df_raw):
             i += 1
     return pd.DataFrame(rows)
 
-# =========================
-# Upload Excel
-# =========================
-uploaded_file = st.file_uploader("Upload Excel (.xlsx) with stacked term tables", type=["xlsx"])
-
-if uploaded_file:
-    xls = pd.ExcelFile(uploaded_file)
-    selected_sheet = st.selectbox("Select Sheet (Subject)", xls.sheet_names)
-    df_raw = pd.read_excel(uploaded_file, sheet_name=selected_sheet, header=None)
-    df = extract_and_flatten(df_raw)
-
-    if df.empty:
-        st.error("❌ No valid term tables detected.")
-        st.stop()
+    # =========================
+    # Upload Excel
+    # =========================
+    uploaded_file = st.file_uploader("Upload Excel (.xlsx) with stacked term tables", type=["xlsx"])
+    
+    if uploaded_file:
+        xls = pd.ExcelFile(uploaded_file)
+        selected_sheet = st.selectbox("Select Sheet (Subject)", xls.sheet_names)
+        df_raw = pd.read_excel(uploaded_file, sheet_name=selected_sheet, header=None)
+        df = extract_and_flatten(df_raw)
+    
+        if df.empty:
+            st.error("❌ No valid term tables detected.")
+            st.stop()
 
     # =========================
     # Clean columns
@@ -169,41 +169,46 @@ if uploaded_file:
     st.header(f"📘 Unified Dashboard – {selected_sheet}")
     
     if not df.empty:
-        # 1. Prepare Data: Melt the skills into a "Long Format"
-        df_chart = df.melt(
-            id_vars=['Term', 'Student Name'], 
-            value_vars=skills, 
-            var_name='Skill', 
-            value_name='Score'
+        # 1. Prepare Data for Bars (Average Scores)
+        df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='Score')
+        df_scores = df_melted.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
+    
+        # 2. Prepare Data for Line (Grade Counts)
+        # This counts how many students got each grade per term
+        df_counts = df.groupby(['Term', 'Grade']).size().reset_index(name='Count')
+    
+        # --- CHART 1: The Bars (Average Score) ---
+        bar_base = alt.Chart(df_scores).encode(
+            x=alt.X('Skill:N', title=None),
+            y=alt.Y('Score:Q', title='Avg Score (0-100)', scale=alt.Scale(domain=[0, 100])),
+            color=alt.Color('Term:N', legend=None)
         )
-        
-        # Calculate the mean score per Skill per Term
-        df_grouped = df_chart.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
+        bars = bar_base.mark_bar(size=25, opacity=0.7)
     
-        # 2. Define the shared BASE (No 'column' here!)
-        base = alt.Chart(df_grouped).encode(
-            x=alt.X('Skill:N', title=None, axis=alt.Axis(labelAngle=-45)),
-            y=alt.Y('Score:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Term:N', legend=alt.Legend(title="Academic Term"))
+        # --- CHART 2: The Line (Grade Counts) ---
+        # We use 'Grade' on the X-axis for the line to show the distribution
+        line_base = alt.Chart(df_counts).encode(
+            x=alt.X('Grade:N', title='Grades & Skills'),
+            y=alt.Y('Count:Q', title='Student Count', axis=alt.Axis(titleColor='#ff4b4b')),
+            color=alt.value('#ff4b4b') # Distinct red for the count line
         )
+        line = line_base.mark_line(strokeWidth=3)
+        points = line_base.mark_point(size=50)
     
-        # 3. Create individual layers
-        bars = base.mark_bar(size=20, opacity=0.8)
-        line = base.mark_line(color='red', size=2)
-        points = base.mark_point(color='red', size=30)
-    
-        # 4. LAYER first, then FACET into columns
-        unified_chart = (bars + line + points).facet(
-            column=alt.Column('Term:N', title='Progress by Term')
-        ).properties(
-            # Note: properties here apply to the individual facets
+        # 3. Layer and Facet
+        # We layer the Bars and the Line. Altair will resolve the different X-axes 
+        # by showing both Skills and Grades on the bottom.
+        combined = alt.layer(bars, line + points).resolve_scale(
+            y='independent' # This gives us the dual Y-axis (left for score, right for count)
+        ).facet(
+            column=alt.Column('Term:N', title='Term Progress & Grade Distribution')
         ).configure_view(
             stroke=None
         )
     
-        st.altair_chart(unified_chart)
+        st.altair_chart(combined, use_container_width=True)
     else:
-        st.warning("No data available to display chart.")
+        st.warning("No data available.")
 
     # Create two columns for the buttons
     st.subheader("📤 Upload to Google Drive")
