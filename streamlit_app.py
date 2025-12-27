@@ -166,6 +166,9 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
+    st.header(f"📘 Dashboard – {selected_sheet}")
+    st.dataframe(df)
+
     st.header(f"📊 Integrated Performance & Growth Trend – {selected_sheet}")
 
     if not df.empty:
