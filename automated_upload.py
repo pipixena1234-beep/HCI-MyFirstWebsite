@@ -7,6 +7,7 @@ from io import BytesIO
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 from google.oauth2 import service_account
+import time # Ensure this is imported at the top
 
 # --- Helper: Flatten Logic ---
 def extract_and_flatten(df_raw):
@@ -41,6 +42,9 @@ def main():
     
     target_dt = datetime.strptime(config.get("target_datetime"), "%Y-%m-%d %H:%M")
     now_local = datetime.utcnow() + timedelta(hours=8)
+
+    # Malaysia Time (UTC+8) adjustment
+    print(f"⏰ MYT Time: {now_local.strftime('%Y-%m-%d %H:%M:%S')}")
     
     if now_local < target_dt:
         print(f"⏳ Waiting for {target_dt}. Current: {now_local}")
