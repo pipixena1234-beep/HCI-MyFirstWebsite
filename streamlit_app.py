@@ -166,14 +166,14 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.header(f"📈 Skill Growth Analysis – {selected_sheet}")
+    st.header("📈 Overall Skill Growth Comparison")
     
     if not df.empty:
         # 1. Prepare Data
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
-        # 2. Calculate Growth Percentage
+        # 2. Calculate Growth Percentage relative to the first Term
         terms_sorted = sorted(df['Term'].unique())
         first_term = terms_sorted[0]
         
@@ -183,49 +183,38 @@ if uploaded_file:
         df_growth = pd.merge(df_term_grouped, df_first_values, on='Skill')
         df_growth['GrowthPct'] = ((df_growth['TermScore'] - df_growth['BaselineScore']) / df_growth['BaselineScore']) * 100
     
-        # 3. Create a Function for the Chart
-        def make_growth_chart(skill_name, data):
-            skill_data = data[data['Skill'] == skill_name]
-            
-            # Base Chart
-            base = alt.Chart(skill_data).encode(
-                x=alt.X('Term:N', title=None, sort=terms_sorted)
-            )
+        # 3. Create a Single Multi-Line Chart
+        # We map 'Skill' to 'Color' to get multiple lines
+        growth_chart = alt.Chart(df_growth).mark_line(point=True, size=3).encode(
+            x=alt.X('Term:N', title='Term / Month', sort=terms_sorted),
+            y=alt.Y('GrowthPct:Q', title='Growth Percentage (%)', axis=alt.Axis(format='+')),
+            color=alt.Color('Skill:N', legend=alt.Legend(title="Assessment Skills")),
+            tooltip=[
+                alt.Tooltip('Skill:N'),
+                alt.Tooltip('Term:N'),
+                alt.Tooltip('GrowthPct:Q', title='Total Growth', format='.1f')
+            ]
+        ).properties(
+            width='container',
+            height=450,
+            title="Comparison of Skill Improvement Over Time"
+        ).interactive()
     
-            # Thinner Bars (Scores)
-            bars = base.mark_bar(size=15, opacity=0.6).encode(
-                y=alt.Y('TermScore:Q', title='Avg Score', scale=alt.Scale(domain=[0, 100])),
-                color=alt.Color('Term:N', legend=None)
-            )
+        # 4. Add a Zero-Line (Baseline) for clarity
+        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='black', strokeDash=[3,3]).encode(y='y')
     
-            # Line (Growth %) - Red color to stand out
-            line = base.mark_line(color='#ff4b4b', size=3).encode(
-                y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b'))
-            )
-            
-            points = base.mark_point(color='#ff4b4b', size=40).encode(y='GrowthPct:Q')
-    
-            # Combine into Dual Axis
-            return alt.layer(bars, line + points).resolve_scale(
-                y='independent'
-            ).properties(
-                title=skill_name,
-                height=250
-            )
-    
-        # 4. Display charts in a grid (2x2)
-        # Using st.columns avoids the Altair .facet() bug
-        col_a, col_b = st.columns(2)
-        
-        for i, skill in enumerate(skills):
-            target_col = col_a if i % 2 == 0 else col_b
-            with target_col:
-                chart = make_growth_chart(skill, df_growth)
-                st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(zero_line + growth_chart, use_container_width=True)
     
     else:
         st.warning("No data found for the selected sheet.")
+
     
+    # Create two columns for the buttons
+    st.subheader("📤 Upload to Google Drive")
+    folder_id_input = st.text_input(
+        "Enter Google Drive Folder ID",
+        value="0ALncbMfl-gjdUk9PVA"
+    )
     col1, col2 = st.columns(2)
 
     # =========================
