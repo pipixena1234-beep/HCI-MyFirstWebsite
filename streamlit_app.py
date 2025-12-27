@@ -170,50 +170,44 @@ if uploaded_file:
     
     if not df.empty:
         # 1. Prepare Term Data (Bars)
-        df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='Score')
-        df_term_grouped = df_melted.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
+        df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
+        df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
         # 2. Prepare Global Data (Line)
-        df_global_avg = df_melted.groupby(['Skill'])['Score'].mean().reset_index()
+        df_global_avg = df_melted.groupby(['Skill'])['TermScore'].mean().reset_index()
+        df_global_avg.rename(columns={'TermScore': 'GlobalScore'}, inplace=True)
     
-        # --- THE FIX ---
-        # We duplicate the global average for EVERY term so Altair can "Facet" it.
-        all_terms = df_term_grouped['Term'].unique()
-        global_frames = []
-        for term in all_terms:
-            temp_df = df_global_avg.copy()
-            temp_df['Term'] = term
-            global_frames.append(temp_df)
-        df_global_faceted = pd.concat(global_frames)
+        # 3. MERGE them into ONE DataFrame
+        # This aligns the global average to every skill in every term automatically
+        df_final = pd.merge(df_term_grouped, df_global_avg, on='Skill')
     
-        # 3. Create the Base for both
-        # We now use the 'Term' column in both datasets to align the Facets
-        bars = alt.Chart(df_term_grouped).mark_bar(size=20, opacity=0.8).encode(
-            x=alt.X('Skill:N', title=None, axis=alt.Axis(labelAngle=-45)),
-            y=alt.Y('Score:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
+        # 4. Create the Chart using ONE dataset
+        # By using only 'df_final', we avoid the Layering + Facet error
+        base = alt.Chart(df_final).encode(
+            x=alt.X('Skill:N', title=None, axis=alt.Axis(labelAngle=-45))
+        )
+    
+        # The Bars (Term Score)
+        bars = base.mark_bar(size=20, opacity=0.8).encode(
+            y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
             color=alt.Color('Term:N', legend=alt.Legend(title="Academic Term"))
         )
     
-        line = alt.Chart(df_global_faceted).mark_line(
-            color='red', 
-            size=3, 
-            strokeDash=[5, 5]
-        ).encode(
-            x='Skill:N',
-            y='Score:Q'
+        # The Line (Global Score)
+        line = base.mark_line(color='red', size=3, strokeDash=[5, 5]).encode(
+            y='GlobalScore:Q'
         )
     
-        points = alt.Chart(df_global_faceted).mark_point(
-            color='red', 
-            size=40,
-            fill='white'
-        ).encode(
-            x='Skill:N',
-            y='Score:Q'
+        # The Points (Global Score)
+        points = base.mark_point(color='red', size=40, fill='white').encode(
+            y='GlobalScore:Q',
+            tooltip=[
+                alt.Tooltip('TermScore:Q', title='Term Avg', format='.2f'),
+                alt.Tooltip('GlobalScore:Q', title='Global Avg', format='.2f')
+            ]
         )
     
-        # 4. Layer and Facet
-        # Now that both datasets have a 'Term' column, .facet() will work!
+        # 5. Facet the combined chart
         unified_chart = (bars + line + points).facet(
             column=alt.Column('Term:N', title='Term Performance vs. Global Average')
         ).configure_view(
