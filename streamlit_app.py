@@ -166,64 +166,59 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.subheader("📈 Summary: Skill Performance vs. Growth Momentum")
-    
+    st.header(f"📊 Integrated Performance & Growth Trend – {selected_sheet}")
+
     if not df.empty:
-        # 1. Data Prep
+        # 1. Prepare Data
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
+    
+        # 2. Calculate Growth Percentage
         terms_sorted = sorted(df['Term'].unique())
-        df_first = df_term_grouped[df_term_grouped['Term'] == terms_sorted[0]][['Skill', 'TermScore']].rename(columns={'TermScore': 'Base'})
-        df_final = pd.merge(df_term_grouped, df_first, on='Skill')
-        df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['Base']) / df_final['Base']) * 100
+        first_term = terms_sorted[0]
+        df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
+        df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
+        
+        df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
+        df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
     
-        # 2. Base Chart
+        # 3. Create the Base Chart
         base = alt.Chart(df_final).encode(
-            x=alt.X('Term:N', title=None, sort=terms_sorted)
+            x=alt.X('Term:N', title='Academic Term', sort=terms_sorted)
         )
     
-        # 3. Bars (Left Axis)
-        bars = base.mark_bar(opacity=0.3, size=15).encode(
+        # 4. MULTIPLE BARS (Average Scores) - Left Axis
+        bars = base.mark_bar(opacity=0.5, size=20).encode(
             xOffset='Skill:N',
-            y=alt.Y('TermScore:Q', title='Average Score (0-100)', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Skill:N', legend=alt.Legend(title="Skills", orient='top'))
+            y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
+            color=alt.Color('Skill:N', legend=alt.Legend(title="Skills Performance", orient='top')),
+            tooltip=['Term', 'Skill', 'TermScore']
         )
     
-        # 4. Lines (Right Axis) 
-        # This is the "Primary" definition for the right axis
-        lines = base.mark_line(size=3, interpolate='monotone').encode(
-            y=alt.Y('GrowthPct:Q', title='Growth % (vs. Start)', axis=alt.Axis(format='+%', titleColor='#E74C3C')),
-            color='Skill:N'
+        # 5. MULTIPLE LINES + POINTS (Growth Trend) - Right Axis
+        # Combining lines and points here keeps the axis title singular
+        lines_points = base.mark_line(size=3, point=True).encode(
+            y=alt.Y('GrowthPct:Q', title='Growth % (Relative to Start)', axis=alt.Axis(titleColor='#ff4b4b', format='+%')),
+            color=alt.Color('Skill:N', legend=None),
+            tooltip=['Term', 'Skill', 'GrowthPct']
         )
     
-        # 5. Points
-        # We set title=None here so it doesn't try to draw the axis name a second time
-        points = base.mark_point(size=60, filled=True).encode(
-            y=alt.Y('GrowthPct:Q', title=None), 
-            color='Skill:N',
-            tooltip=['Skill', 'Term', 'TermScore', 'GrowthPct']
-        )
+        # 6. ZERO BASELINE (The dashed anchor)
+        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='gray', strokeDash=[4,4]).encode(y='y:Q')
     
-        # 6. Zero Baseline
-        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='gray', strokeDash=[2,2]).encode(
-            y=alt.Y('y:Q', title=None)
-        )
-    
-        # 7. Layer and Resolve Scale
-        # We only use resolve_scale. No resolve_axis to avoid the crash.
-        persuasive_chart = (bars + zero_line + lines + points).resolve_scale(
+        # 7. Resolve Dual Axis and Combine
+        combined_chart = alt.layer(bars, zero_line, lines_points).resolve_scale(
             y='independent'
         ).properties(
             width='container',
-            height=500
-        ).configure_view(
-            stroke=None
-        )
+            height=500,
+            title="Skill Scores (Bars) vs. Growth Percentage (Lines)"
+        ).interactive()
     
-        st.altair_chart(persuasive_chart, use_container_width=True)
-        
+        st.altair_chart(combined_chart, use_container_width=True)
+    
     else:
-        st.warning("No data available.")
+        st.warning("No data found to generate the combined chart.")
 
     
     # Create two columns for the buttons
