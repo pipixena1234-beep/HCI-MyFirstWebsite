@@ -162,6 +162,47 @@ if uploaded_file:
                   "Good effort, keep improving!" if x >= 70 else
                   "Needs improvement"
     )
+    # =========================
+    # High-Level Metrics
+    # =========================
+    st.subheader("📌 Key Highlights")
+    col_m1, col_m2, col_m3 = st.columns(3)
+
+    # 1. Top Performing Student
+    if not df.empty:
+        # Find the row with the highest average
+        top_row = df.loc[df['Average'].idxmax()]
+        top_student = top_row['Student Name']
+        top_score = top_row['Average']
+        
+        col_m1.metric(
+            label="🏆 Top Performing Student", 
+            value=top_student, 
+            delta=f"{top_score:.1f} Avg"
+        )
+
+        # 2. Most Improved Skill (Highest Growth)
+        # Looking at the df_final we created for the chart
+        if 'df_final' in locals() and not df_final.empty:
+            best_growth_row = df_final.loc[df_final['GrowthPct'].idxmax()]
+            col_m2.metric(
+                label="📈 Most Improved Skill", 
+                value=best_growth_row['Skill'], 
+                delta=f"{best_growth_row['GrowthPct']:.1f}% Growth"
+            )
+        else:
+            col_m2.metric("📈 Most Improved Skill", "Calculating...", delta=None)
+
+        # 3. Overall Class Success Rate (Percentage of A & B grades)
+        success_count = len(df[df['Grade'].isin(['A', 'B'])])
+        success_rate = (success_count / len(df)) * 100
+        col_m3.metric(
+            label="🎯 Class Success Rate", 
+            value=f"{success_rate:.0f}%", 
+            delta="Grades A & B"
+        )
+    
+    st.divider() # Adds a clean line between metrics and the data table
 
     # =========================
     # Dashboard
