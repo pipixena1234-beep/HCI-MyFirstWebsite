@@ -167,18 +167,20 @@ if uploaded_file:
     # Dashboard
     # =========================
     st.header(f"📊 Integrated Performance & Growth Trend – {selected_sheet}")
-
+    
     if not df.empty:
-        # 1. Prepare Data
+        # 1. Prepare Data: Average scores per Term per Skill
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
-        # 2. Calculate Growth Percentage
+        # 2. Calculate Growth Percentage relative to the first Term
         terms_sorted = sorted(df['Term'].unique())
         first_term = terms_sorted[0]
+        
         df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
         df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
         
+        # Merge and calculate % change
         df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
         df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
     
@@ -187,7 +189,7 @@ if uploaded_file:
             x=alt.X('Term:N', title='Academic Term', sort=terms_sorted)
         )
     
-        # 4. MULTIPLE BARS (Average Scores) - Left Axis
+        # 4. MULTIPLE BARS (Left Axis: Scores)
         bars = base.mark_bar(opacity=0.5, size=20).encode(
             xOffset='Skill:N',
             y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
@@ -195,18 +197,20 @@ if uploaded_file:
             tooltip=['Term', 'Skill', 'TermScore']
         )
     
-        # 5. MULTIPLE LINES + POINTS (Growth Trend) - Right Axis
-        # Combining lines and points here keeps the axis title singular
+        # 5. MULTIPLE LINES + POINTS (Right Axis: Growth %)
+        # Combining points here avoids the Y-axis duplication error
         lines_points = base.mark_line(size=3, point=True).encode(
             y=alt.Y('GrowthPct:Q', title='Growth % (Relative to Start)', axis=alt.Axis(titleColor='#ff4b4b', format='+%')),
             color=alt.Color('Skill:N', legend=None),
             tooltip=['Term', 'Skill', 'GrowthPct']
         )
     
-        # 6. ZERO BASELINE (The dashed anchor)
-        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='gray', strokeDash=[4,4]).encode(y='y:Q')
+        # 6. ZERO BASELINE (Reference Line)
+        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='gray', strokeDash=[4,4]).encode(
+            y='y:Q'
+        )
     
-        # 7. Resolve Dual Axis and Combine
+        # 7. Final Combined Chart
         combined_chart = alt.layer(bars, zero_line, lines_points).resolve_scale(
             y='independent'
         ).properties(
