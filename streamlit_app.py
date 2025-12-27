@@ -174,53 +174,57 @@ if uploaded_file:
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
         # 2. Calculate Growth Percentage
-        # We compare every term to the very first term available in the data
-        first_term = sorted(df['Term'].unique())[0]
+        terms_sorted = sorted(df['Term'].unique())
+        first_term = terms_sorted[0]
+        
         df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
         df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
     
-        # Merge baseline back to calculate % growth
         df_growth = pd.merge(df_term_grouped, df_first_values, on='Skill')
-        # Growth % formula: ((Current - Baseline) / Baseline) * 100
         df_growth['GrowthPct'] = ((df_growth['TermScore'] - df_growth['BaselineScore']) / df_growth['BaselineScore']) * 100
     
-        # 3. Create the Base Chart
-        base = alt.Chart(df_growth).encode(
-            x=alt.X('Term:N', title=None, axis=alt.Axis(labelAngle=-45))
-        )
+        # 3. Create a Function for the Chart
+        def make_growth_chart(skill_name, data):
+            skill_data = data[data['Skill'] == skill_name]
+            
+            # Base Chart
+            base = alt.Chart(skill_data).encode(
+                x=alt.X('Term:N', title=None, sort=terms_sorted)
+            )
     
-        # Bars: Thinner bars for scores
-        bars = base.mark_bar(size=20, opacity=0.8).encode(
-            y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Term:N', legend=None)
-        )
+            # Thinner Bars (Scores)
+            bars = base.mark_bar(size=15, opacity=0.6).encode(
+                y=alt.Y('TermScore:Q', title='Avg Score', scale=alt.Scale(domain=[0, 100])),
+                color=alt.Color('Term:N', legend=None)
+            )
     
-        # Line: Shows % Growth on a Dual Axis (Right side)
-        line = base.mark_line(color='#ff4b4b', size=3).encode(
-            y=alt.Y('GrowthPct:Q', title='Growth % (vs Start)', axis=alt.Axis(titleColor='#ff4b4b'))
-        )
+            # Line (Growth %) - Red color to stand out
+            line = base.mark_line(color='#ff4b4b', size=3).encode(
+                y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b'))
+            )
+            
+            points = base.mark_point(color='#ff4b4b', size=40).encode(y='GrowthPct:Q')
     
-        points = base.mark_point(color='#ff4b4b', size=50).encode(
-            y='GrowthPct:Q',
-            tooltip=[
-                alt.Tooltip('TermScore:Q', title='Score'),
-                alt.Tooltip('GrowthPct:Q', title='Growth %', format='.1f')
-            ]
-        )
+            # Combine into Dual Axis
+            return alt.layer(bars, line + points).resolve_scale(
+                y='independent'
+            ).properties(
+                title=skill_name,
+                height=250
+            )
     
-        # 4. Layer with Independent Y-Axes and Facet by Skill
-        # resolve_scale gives us the dual axis (Left = Score, Right = Growth %)
-        unified_chart = alt.layer(bars, line + points).resolve_scale(
-            y='independent'
-        ).facet(
-            column=alt.Column('Skill:N', title='Skill Progress & Growth Rate')
-        ).configure_view(
-            stroke=None
-        )
+        # 4. Display charts in a grid (2x2)
+        # Using st.columns avoids the Altair .facet() bug
+        col_a, col_b = st.columns(2)
+        
+        for i, skill in enumerate(skills):
+            target_col = col_a if i % 2 == 0 else col_b
+            with target_col:
+                chart = make_growth_chart(skill, df_growth)
+                st.altair_chart(chart, use_container_width=True)
     
-        st.altair_chart(unified_chart, use_container_width=True)
     else:
-        st.warning("No data available.")
+        st.warning("No data found for the selected sheet.")
     
     col1, col2 = st.columns(2)
 
