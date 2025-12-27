@@ -106,20 +106,20 @@ def extract_and_flatten(df_raw):
             i += 1
     return pd.DataFrame(rows)
 
-    # =========================
-    # Upload Excel
-    # =========================
-    uploaded_file = st.file_uploader("Upload Excel (.xlsx) with stacked term tables", type=["xlsx"])
-    
-    if uploaded_file:
-        xls = pd.ExcelFile(uploaded_file)
-        selected_sheet = st.selectbox("Select Sheet (Subject)", xls.sheet_names)
-        df_raw = pd.read_excel(uploaded_file, sheet_name=selected_sheet, header=None)
-        df = extract_and_flatten(df_raw)
-    
-        if df.empty:
-            st.error("❌ No valid term tables detected.")
-            st.stop()
+# =========================
+# Upload Excel
+# =========================
+uploaded_file = st.file_uploader("Upload Excel (.xlsx) with stacked term tables", type=["xlsx"])
+
+if uploaded_file:
+    xls = pd.ExcelFile(uploaded_file)
+    selected_sheet = st.selectbox("Select Sheet (Subject)", xls.sheet_names)
+    df_raw = pd.read_excel(uploaded_file, sheet_name=selected_sheet, header=None)
+    df = extract_and_flatten(df_raw)
+
+    if df.empty:
+        st.error("❌ No valid term tables detected.")
+        st.stop()
 
     # =========================
     # Clean columns
