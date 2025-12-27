@@ -220,7 +220,7 @@ if uploaded_file:
     
         st.altair_chart(unified_chart, use_container_width=True)
     else:
-    st.warning("No data available.")
+        st.warning("No data available.")
     
     col1, col2 = st.columns(2)
 
