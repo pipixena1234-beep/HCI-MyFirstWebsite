@@ -169,7 +169,7 @@ if uploaded_file:
     st.header(f"📘 Dashboard – {selected_sheet}")
     st.dataframe(df)
 
-        # =========================
+    # =========================
     # High-Level Metrics
     # =========================
     st.subheader("📌 Key Highlights")
