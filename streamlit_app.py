@@ -170,7 +170,6 @@ if uploaded_file:
     
     if not df.empty:
         # 1. Prepare Data: Melt the skills into a "Long Format"
-        # This turns columns [Logic, UI, etc.] into rows so Altair can group them
         df_chart = df.melt(
             id_vars=['Term', 'Student Name'], 
             value_vars=skills, 
@@ -181,28 +180,25 @@ if uploaded_file:
         # Calculate the mean score per Skill per Term
         df_grouped = df_chart.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
     
-        # 2. Define the Base Chart
-        # X is now Skill, but we use 'column' to group by Term
-        chart = alt.Chart(df_grouped).encode(
+        # 2. Define the shared BASE (No 'column' here!)
+        base = alt.Chart(df_grouped).encode(
             x=alt.X('Skill:N', title=None, axis=alt.Axis(labelAngle=-45)),
             y=alt.Y('Score:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Term:N', legend=alt.Legend(title="Academic Term")),
-            column=alt.Column('Term:N', title='Progress by Term', spacing=10) # Groups charts side-by-side
+            color=alt.Color('Term:N', legend=alt.Legend(title="Academic Term"))
         )
     
-        # 3. Add the Thinner Bars
-        bars = chart.mark_bar(size=20, opacity=0.8)
+        # 3. Create individual layers
+        bars = base.mark_bar(size=20, opacity=0.8)
+        line = base.mark_line(color='red', size=2)
+        points = base.mark_point(color='red', size=30)
     
-        # 4. Add the Line + Points
-        line = chart.mark_line(color='red', size=2)
-        points = chart.mark_point(color='red', size=30)
-    
-        # 5. Combine and Display
-        unified_chart = (bars + line + points).properties(
-            width=150, # Width of each individual term group
-            height=300
+        # 4. LAYER first, then FACET into columns
+        unified_chart = (bars + line + points).facet(
+            column=alt.Column('Term:N', title='Progress by Term')
+        ).properties(
+            # Note: properties here apply to the individual facets
         ).configure_view(
-            stroke=None # Removes the borders between groups for a cleaner look
+            stroke=None
         )
     
         st.altair_chart(unified_chart)
