@@ -171,44 +171,17 @@ if uploaded_file:
         st.subheader(f"Term: {term}")
         st.bar_chart(df[df["Term"] == term][skills].mean())
 
+    # Create two columns for the buttons
+    col1, col2 = st.columns(2)
+
+    # =========================
+    # Upload to Google Drive (Column 2)
+    # =========================
     st.subheader("📤 Upload to Google Drive")
     folder_id_input = st.text_input(
         "Enter Google Drive Folder ID",
         value="0ALncbMfl-gjdUk9PVA"
     )
-
-    # Create two columns for the buttons
-    col1, col2 = st.columns(2)
-
-    # =========================
-    # Generate ZIP (Column 1)
-    # =========================
-    with col1:
-        if st.button("📦 Generate PDFs (ZIP)"):
-            zip_buffer = BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-                for _, row in df.iterrows():
-                    pdf = FPDF()
-                    pdf.add_page()
-                    pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
-                    pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f"Student: {row['Student Name'].strip()}", ln=True)
-                    for s in skills:
-                        pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
-                    pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
-                    pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
-                    pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
-                    pdf_bytes = BytesIO()
-                    pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
-                    pdf_bytes.seek(0)
-                    zip_file.writestr(f"{row['Term']}/{row['Student Name'].strip()}_report.pdf", pdf_bytes.read())
-            zip_buffer.seek(0)
-            st.download_button("⬇️ Download ZIP", data=zip_buffer, file_name="student_reports.zip")
-            
-    # =========================
-    # Upload to Google Drive (Column 2)
-    # =========================
     
     with col2:
         if st.button("Upload to Google Drive"):
@@ -303,3 +276,31 @@ if uploaded_file:
             except Exception as e:
                 st.error(f"Google Drive operation failed: {e}")
         
+
+    # =========================
+    # Generate ZIP (Column 1)
+    # =========================
+    with col1:
+        if st.button("📦 Generate PDFs (ZIP)"):
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+                for _, row in df.iterrows():
+                    pdf = FPDF()
+                    pdf.add_page()
+                    pdf.set_font("Arial", "B", 16)
+                    pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
+                    pdf.set_font("Arial", "", 12)
+                    pdf.cell(0, 8, f"Student: {row['Student Name'].strip()}", ln=True)
+                    for s in skills:
+                        pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
+                    pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
+                    pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
+                    pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+                    pdf_bytes = BytesIO()
+                    pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
+                    pdf_bytes.seek(0)
+                    zip_file.writestr(f"{row['Term']}/{row['Student Name'].strip()}_report.pdf", pdf_bytes.read())
+            zip_buffer.seek(0)
+            st.download_button("⬇️ Download ZIP", data=zip_buffer, file_name="student_reports.zip")
+            
+    
