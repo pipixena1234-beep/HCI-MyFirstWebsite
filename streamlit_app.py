@@ -169,54 +169,52 @@ if uploaded_file:
     st.header(f"📘 Unified Dashboard – {selected_sheet}")
     
     if not df.empty:
-        # 1. Melt data so we have a row for every Skill per Student per Term
+        # 1. Prepare Data: Current Term Averages (for the bars)
         df_melted = df.melt(
-            id_vars=['Term', 'Student Name'], 
+            id_vars=['Term'], 
             value_vars=skills, 
             var_name='Skill', 
             value_name='Score'
         )
-        
-        # 2. Calculate the Mean Score per Skill
-        df_grouped = df_melted.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
+        df_term_grouped = df_melted.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
     
-        # 3. MAP Scores to Grade Points for the Line Chart
-        # We create a numeric value for grades: A=90, B=75, C=65, D=55, F=40
-        # This ensures the line sits in the middle of the grade bracket
-        def map_to_grade_level(score):
-            if score >= 80: return 90  # Middle of A range
-            if score >= 70: return 75  # Middle of B range
-            if score >= 60: return 65  # Middle of C range
-            if score >= 50: return 55  # Middle of D range
-            return 40                  # F range
+        # 2. Prepare Data: Global Averages across ALL Terms (for the line)
+        # This creates one average per skill, regardless of which term it is
+        df_global_avg = df_melted.groupby(['Skill'])['Score'].mean().reset_index()
     
-        df_grouped['GradeLevel'] = df_grouped['Score'].apply(map_to_grade_level)
-    
-        # 4. Define the Base (Scores)
-        base = alt.Chart(df_grouped).encode(
+        # 3. Create the Bars (Term Specific)
+        # We use df_term_grouped here
+        bars = alt.Chart(df_term_grouped).mark_bar(size=20, opacity=0.8).encode(
             x=alt.X('Skill:N', title=None, axis=alt.Axis(labelAngle=-45)),
+            y=alt.Y('Score:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
             color=alt.Color('Term:N', legend=alt.Legend(title="Academic Term"))
         )
     
-        # 5. Bars show the actual Score
-        bars = base.mark_bar(size=20, opacity=0.8).encode(
-            y=alt.Y('Score:Q', title='Avg Score & Grade Level', scale=alt.Scale(domain=[0, 100]))
+        # 4. Create the Line (Global Average)
+        # We use df_global_avg here. It doesn't have a 'Term' column,
+        # so it will repeat the same line across all faceted columns.
+        line = alt.Chart(df_global_avg).mark_line(
+            color='red', 
+            size=3, 
+            strokeDash=[5, 5] # Dashed line to indicate it's a benchmark
+        ).encode(
+            x='Skill:N',
+            y='Score:Q'
         )
     
-        # 6. Line shows the "Grade Trend"
-        # Using the GradeLevel ensures the line tracks the "Letter Grade" status
-        line = base.mark_line(color='red', size=2, strokeDash=[5, 5]).encode(
-            y='GradeLevel:Q'
-        )
-        
-        points = base.mark_point(color='red', size=40).encode(
-            y='GradeLevel:Q',
-            tooltip=['Term', 'Skill', 'Score']
+        points = alt.Chart(df_global_avg).mark_point(
+            color='red', 
+            size=40,
+            fill='white' # Hollow points for a cleaner look
+        ).encode(
+            x='Skill:N',
+            y='Score:Q',
+            tooltip=alt.Tooltip('Score:Q', format='.2f', title='Global Avg')
         )
     
-        # 7. Unified Layer + Facet
+        # 5. Combine: Layer the global line on top of the term bars, then facet
         unified_chart = (bars + line + points).facet(
-            column=alt.Column('Term:N', title='Progress by Term')
+            column=alt.Column('Term:N', title='Term Performance vs. Global Average')
         ).configure_view(
             stroke=None
         )
