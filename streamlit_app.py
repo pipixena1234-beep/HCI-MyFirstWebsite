@@ -169,44 +169,50 @@ if uploaded_file:
     st.header(f"📘 Unified Dashboard – {selected_sheet}")
     
     if not df.empty:
-        # 1. Prepare Data for Bars (Average Scores)
+        # 1. Prepare Data
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='Score')
         df_scores = df_melted.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
-    
-        # 2. Prepare Data for Line (Grade Counts)
-        # This counts how many students got each grade per term
         df_counts = df.groupby(['Term', 'Grade']).size().reset_index(name='Count')
     
-        # --- CHART 1: The Bars (Average Score) ---
-        bar_base = alt.Chart(df_scores).encode(
-            x=alt.X('Skill:N', title=None),
-            y=alt.Y('Score:Q', title='Avg Score (0-100)', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Term:N', legend=None)
-        )
-        bars = bar_base.mark_bar(size=25, opacity=0.7)
+        # 2. Create the Layered Chart function
+        def make_term_chart(term_name):
+            # Subset data for this term
+            term_score_data = df_scores[df_scores['Term'] == term_name]
+            term_count_data = df_counts[df_counts['Term'] == term_name]
     
-        # --- CHART 2: The Line (Grade Counts) ---
-        # We use 'Grade' on the X-axis for the line to show the distribution
-        line_base = alt.Chart(df_counts).encode(
-            x=alt.X('Grade:N', title='Grades & Skills'),
-            y=alt.Y('Count:Q', title='Student Count', axis=alt.Axis(titleColor='#ff4b4b')),
-            color=alt.value('#ff4b4b') # Distinct red for the count line
-        )
-        line = line_base.mark_line(strokeWidth=3)
-        points = line_base.mark_point(size=50)
+            # Bar chart for scores
+            bars = alt.Chart(term_score_data).mark_bar(size=20, opacity=0.7).encode(
+                x=alt.X('Skill:N', title='Skills / Grades'),
+                y=alt.Y('Score:Q', title='Avg Score', scale=alt.Scale(domain=[0, 100])),
+                color=alt.value('#1f77b4')
+            )
     
-        # 3. Layer and Facet
-        # We layer the Bars and the Line. Altair will resolve the different X-axes 
-        # by showing both Skills and Grades on the bottom.
-        combined = alt.layer(bars, line + points).resolve_scale(
-            y='independent' # This gives us the dual Y-axis (left for score, right for count)
-        ).facet(
-            column=alt.Column('Term:N', title='Term Progress & Grade Distribution')
-        ).configure_view(
-            stroke=None
-        )
+            # Line chart for counts
+            line = alt.Chart(term_count_data).mark_line(color='#ff4b4b', strokeWidth=3).encode(
+                x=alt.X('Grade:N'),
+                y=alt.Y('Count:Q', title='Student Count')
+            )
+            
+            points = line.mark_point(color='#ff4b4b', size=50)
     
-        st.altair_chart(combined, use_container_width=True)
+            # Layer them with independent Y axes
+            return alt.layer(bars, line + points).resolve_scale(
+                y='independent'
+            ).properties(
+                title=f"Term: {term_name}",
+                width=250,
+                height=300
+            )
+    
+        # 3. Display charts side-by-side using Streamlit columns
+        all_terms = sorted(df['Term'].unique())
+        cols = st.columns(len(all_terms))
+    
+        for i, term in enumerate(all_terms):
+            with cols[i]:
+                chart = make_term_chart(term)
+                st.altair_chart(chart, use_container_width=True)
+    
     else:
         st.warning("No data available.")
 
