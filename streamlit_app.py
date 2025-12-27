@@ -169,7 +169,7 @@ if uploaded_file:
     st.subheader("📈 Summary: Skill Performance vs. Growth Momentum")
     
     if not df.empty:
-        # 1. Data Prep (Same as before)
+        # 1. Data Prep
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
         terms_sorted = sorted(df['Term'].unique())
@@ -182,45 +182,43 @@ if uploaded_file:
             x=alt.X('Term:N', title=None, sort=terms_sorted)
         )
     
-        # 3. Bars (The 'Status Quo') - Made slightly thinner and more transparent
-        bars = base.mark_bar(opacity=0.4, size=15).encode(
+        # 3. Bars (Current Score - Left Axis)
+        bars = base.mark_bar(opacity=0.3, size=15).encode(
             xOffset='Skill:N',
-            y=alt.Y('TermScore:Q', title='Current Score', scale=alt.Scale(domain=[0, 100])),
+            y=alt.Y('TermScore:Q', title='Average Score (0-100)', scale=alt.Scale(domain=[0, 100])),
             color=alt.Color('Skill:N', legend=alt.Legend(title="Skills", orient='top'))
         )
     
-        # 4. Lines (The 'Growth Story') - Made thicker to stand out
-        lines = base.mark_line(size=4, interpolate='monotone').encode(
-            y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(format='+%', titleColor='#E74C3C')),
+        # 4. Lines (Growth Trend - Right Axis)
+        lines = base.mark_line(size=3, interpolate='monotone').encode(
+            y=alt.Y('GrowthPct:Q', title='Growth % (vs. Start)', axis=alt.Axis(format='+%', titleColor='#E74C3C')),
             color='Skill:N'
         )
     
-        # 5. Points (The 'Milestones')
-        points = base.mark_point(size=80, filled=True).encode(
+        # 5. Points
+        points = base.mark_point(size=60, filled=True).encode(
             y='GrowthPct:Q',
             color='Skill:N',
             tooltip=['Skill', 'Term', 'TermScore', 'GrowthPct']
         )
     
-        # 6. The 'Stability' Line (0% Growth)
-        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='#5D6D7E', strokeDash=[2,2]).encode(y='y')
+        # 6. Zero Baseline
+        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='gray', strokeDash=[2,2]).encode(y='y')
     
-        # 7. Final Layering
+        # 7. Layer and Resolve Axis Duplication
         persuasive_chart = alt.layer(bars, zero_line, lines, points).resolve_scale(
             y='independent'
+        ).resolve_axis(
+            y='min' # <--- THIS FIXES THE DUPLICATED TEXT
         ).properties(
             width='container',
             height=500
-        ).configure_axis(
-            grid=False
         ).configure_view(
             stroke=None
         )
     
         st.altair_chart(persuasive_chart, use_container_width=True)
         
-        st.info("💡 **How to read this summary:** The **bars** represent the actual grade (0-100), while the **lines** show the percentage of improvement since the first month. If the line is above the dashed baseline, the student is improving!")
-    
     else:
         st.warning("No data available.")
 
