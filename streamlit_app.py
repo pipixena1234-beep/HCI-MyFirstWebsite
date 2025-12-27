@@ -223,7 +223,7 @@ if uploaded_file:
         st.altair_chart(combined_chart, use_container_width=True)
     
     else:
-    st.warning("No data found to generate the combined chart.")
+        st.warning("No data found to generate the combined chart.")
 
     
     # Create two columns for the buttons
