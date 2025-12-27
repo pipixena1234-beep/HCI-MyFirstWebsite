@@ -166,42 +166,57 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.header("📈 Overall Skill Growth Comparison")
+    st.header(f"📊 Performance & Growth Dashboard – {selected_sheet}")
     
     if not df.empty:
-        # 1. Prepare Data
+        # --- 1. DATA PREPARATION ---
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
-        # 2. Calculate Growth Percentage relative to the first Term
+        # Calculate Growth Percentage
         terms_sorted = sorted(df['Term'].unique())
         first_term = terms_sorted[0]
-        
         df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
         df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
-    
         df_growth = pd.merge(df_term_grouped, df_first_values, on='Skill')
         df_growth['GrowthPct'] = ((df_growth['TermScore'] - df_growth['BaselineScore']) / df_growth['BaselineScore']) * 100
     
-        # 3. Create a Single Multi-Line Chart
-        # We map 'Skill' to 'Color' to get multiple lines
+        # --- 2. SKILL PERFORMANCE BARS (The Column Charts) ---
+        st.subheader("🏗️ Individual Skill Performance")
+        
+        # We use a helper function to keep the bar logic clean
+        def make_bar_chart(skill_name, data):
+            return alt.Chart(data[data['Skill'] == skill_name]).mark_bar(
+                size=18, opacity=0.8, cornerRadiusTopLeft=3, cornerRadiusTopRight=3
+            ).encode(
+                x=alt.X('Term:N', title=None, sort=terms_sorted),
+                y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
+                color=alt.Color('Term:N', legend=None)
+            ).properties(title=skill_name, height=200)
+    
+        # Display bars in 4 columns for a sleek look
+        bar_cols = st.columns(len(skills))
+        for i, skill in enumerate(skills):
+            with bar_cols[i]:
+                st.altair_chart(make_bar_chart(skill, df_term_grouped), use_container_width=True)
+    
+        st.divider()
+    
+        # --- 3. OVERALL GROWTH TREND (The Multi-Line Chart) ---
+        st.subheader("📈 Comparative Growth Rate")
+        
         growth_chart = alt.Chart(df_growth).mark_line(point=True, size=3).encode(
             x=alt.X('Term:N', title='Term / Month', sort=terms_sorted),
             y=alt.Y('GrowthPct:Q', title='Growth Percentage (%)', axis=alt.Axis(format='+')),
-            color=alt.Color('Skill:N', legend=alt.Legend(title="Assessment Skills")),
+            color=alt.Color('Skill:N', legend=alt.Legend(title="Skills")),
             tooltip=[
                 alt.Tooltip('Skill:N'),
-                alt.Tooltip('Term:N'),
-                alt.Tooltip('GrowthPct:Q', title='Total Growth', format='.1f')
+                alt.Tooltip('GrowthPct:Q', title='Growth', format='.1f')
             ]
-        ).properties(
-            width='container',
-            height=450,
-            title="Comparison of Skill Improvement Over Time"
-        ).interactive()
+        ).properties(height=400).interactive()
     
-        # 4. Add a Zero-Line (Baseline) for clarity
-        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='black', strokeDash=[3,3]).encode(y='y')
+        # Add a dashed baseline at 0%
+        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='gray', strokeDash=[4,4]).encode(y='y')
     
         st.altair_chart(zero_line + growth_chart, use_container_width=True)
     
