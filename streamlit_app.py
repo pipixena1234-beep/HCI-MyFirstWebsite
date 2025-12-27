@@ -166,60 +166,61 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.header(f"📘 Skill Progress Across Terms – {selected_sheet}")
+    st.header(f"📈 Skill Growth Analysis – {selected_sheet}")
     
     if not df.empty:
         # 1. Prepare Data
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
-        
-        # Calculate Mean per Term per Skill
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
-        # Calculate Global Mean per Skill (Benchmark)
-        df_global_avg = df_melted.groupby(['Skill'])['TermScore'].mean().reset_index()
-        df_global_avg.rename(columns={'TermScore': 'GlobalScore'}, inplace=True)
+        # 2. Calculate Growth Percentage
+        # We compare every term to the very first term available in the data
+        first_term = sorted(df['Term'].unique())[0]
+        df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
+        df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
     
-        # Merge into one source
-        df_final = pd.merge(df_term_grouped, df_global_avg, on='Skill')
+        # Merge baseline back to calculate % growth
+        df_growth = pd.merge(df_term_grouped, df_first_values, on='Skill')
+        # Growth % formula: ((Current - Baseline) / Baseline) * 100
+        df_growth['GrowthPct'] = ((df_growth['TermScore'] - df_growth['BaselineScore']) / df_growth['BaselineScore']) * 100
     
-        # 2. Define the Chart
-        # We use Term on the X-axis now to show progress over time
-        base = alt.Chart(df_final).encode(
-            x=alt.X('Term:N', title=None, axis=alt.Axis(labelAngle=-45)),
-            y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Term:N', legend=alt.Legend(title="Terms"))
+        # 3. Create the Base Chart
+        base = alt.Chart(df_growth).encode(
+            x=alt.X('Term:N', title=None, axis=alt.Axis(labelAngle=-45))
         )
     
-        # Bars: One bar per term, grouped under the Skill facet
-        bars = base.mark_bar(size=30, opacity=0.8)
-    
-        # Line: Shows the Global Average benchmark for that specific skill
-        line = base.mark_line(color='red', size=3, strokeDash=[5, 5]).encode(
-            y='GlobalScore:Q'
+        # Bars: Thinner bars for scores
+        bars = base.mark_bar(size=20, opacity=0.8).encode(
+            y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
+            color=alt.Color('Term:N', legend=None)
         )
     
-        points = base.mark_point(color='red', size=40, fill='white').encode(
-            y='GlobalScore:Q'
+        # Line: Shows % Growth on a Dual Axis (Right side)
+        line = base.mark_line(color='#ff4b4b', size=3).encode(
+            y=alt.Y('GrowthPct:Q', title='Growth % (vs Start)', axis=alt.Axis(titleColor='#ff4b4b'))
         )
     
-        # 3. FACET BY SKILL
-        # This creates one column per skill (Logic, UI, etc.)
-        unified_chart = (bars + line + points).facet(
-            column=alt.Column('Skill:N', title='Skill Progress Tracking')
+        points = base.mark_point(color='#ff4b4b', size=50).encode(
+            y='GrowthPct:Q',
+            tooltip=[
+                alt.Tooltip('TermScore:Q', title='Score'),
+                alt.Tooltip('GrowthPct:Q', title='Growth %', format='.1f')
+            ]
+        )
+    
+        # 4. Layer with Independent Y-Axes and Facet by Skill
+        # resolve_scale gives us the dual axis (Left = Score, Right = Growth %)
+        unified_chart = alt.layer(bars, line + points).resolve_scale(
+            y='independent'
+        ).facet(
+            column=alt.Column('Skill:N', title='Skill Progress & Growth Rate')
         ).configure_view(
             stroke=None
         )
     
         st.altair_chart(unified_chart, use_container_width=True)
     else:
-        st.warning("No data available.")
-
-    # Create two columns for the buttons
-    st.subheader("📤 Upload to Google Drive")
-    folder_id_input = st.text_input(
-        "Enter Google Drive Folder ID",
-        value="0ALncbMfl-gjdUk9PVA"
-    )
+    st.warning("No data available.")
     
     col1, col2 = st.columns(2)
 
