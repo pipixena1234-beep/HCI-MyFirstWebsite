@@ -129,7 +129,8 @@ def main():
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", "B", 16)
-            pdf.cell(0, 10, f"{sheet_name} - {student_name} Progress Report ({term_clean})", ln=True, align='C')
+            pdf.cell(0, 10, f"{sheet_name} - {student_name}", ln=True, align='C')
+            pdf.cell(0, 10, f"Progress Report ({term_clean})", ln=True, align='C')
             pdf.ln(10)
             pdf.set_font("Arial", "", 12)
             for s in skills:
