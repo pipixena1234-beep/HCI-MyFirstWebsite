@@ -191,7 +191,7 @@ if uploaded_file:
             y='Score:Q'
         )
         
-        points = base.mark_point(color='#ff4b4b', size=50).encode(
+        points = base.mark_point(color='#ff4b4b', size=20).encode(
             y='Score:Q'
         )
         
