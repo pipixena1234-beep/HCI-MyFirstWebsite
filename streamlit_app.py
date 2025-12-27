@@ -181,18 +181,21 @@ if uploaded_file:
         df_final = pd.merge(df_term_grouped, df_first, on='Skill')
         df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['Base']) / df_final['Base']) * 100
     
-        # 3. Create Vertical Stagger and Custom Labels
+        # 3. Create Vertical Stagger Logic
+        # Each skill gets a lane 20 units high. 
+        # The 'Zero' of the lane is the offset (0, 20, 40, 60...)
         skill_list = df_final['Skill'].unique()
         num_skills = len(skill_list)
-        stagger_step = 50 
-        stagger_map = {skill: i * stagger_step for i, skill in enumerate(skill_list)} 
+        lane_width = 20  # Total vertical space per skill
+        stagger_map = {skill: i * lane_width for i, skill in enumerate(skill_list)} 
+        
         df_final['StaggeredGrowth'] = df_final['GrowthPct'] + df_final['Skill'].map(stagger_map)
     
-        # Generate custom tick marks for the right axis (0%, 25%, 50% for each lane)
+        # Generate ticks for -5, 0, and +5 within each lane
         tick_values = []
         for i in range(num_skills):
-            base_offset = i * stagger_step
-            tick_values.extend([base_offset, base_offset + 25, base_offset + 50])
+            offset = i * lane_width
+            tick_values.extend([offset - 5, offset, offset + 5])
     
         # 4. Create the Combined Chart
         base = alt.Chart(df_final).encode(
@@ -200,24 +203,24 @@ if uploaded_file:
         )
     
         # BARS: Performance Scores (Left Axis)
-        bars = base.mark_bar(opacity=0.4).encode(
+        bars = base.mark_bar(opacity=0.3).encode(
             xOffset='Skill:N',
             y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
             color=alt.Color('Skill:N', legend=alt.Legend(title="Skills", orient='top'))
         )
     
-        # LINES: Separated Trends (Right Axis)
-        # We use a custom labelExpr to turn the staggered numbers back into percentages (0-50%)
+        # LINES: Growth Trends (Right Axis - Restricted to -5% to 5% range)
         lines = base.mark_line(size=3, point=True).encode(
             y=alt.Y('StaggeredGrowth:Q', 
-                    title='Growth % (by Skill Lane)', 
+                    title='Growth % (-5 to +5 Range per Skill)', 
                     axis=alt.Axis(
                         values=tick_values,
-                        labelExpr="datum.value % 50 + '%'", # Shows 0%, 25% etc within each 50-unit lane
+                        # Logic: Subtract the offset and show as %
+                        labelExpr="(datum.value % 20 > 10 ? datum.value % 20 - 20 : datum.value % 20) + '%'",
                         titleColor='#ff4b4b'
                     )),
             color=alt.Color('Skill:N', legend=None),
-            tooltip=['Skill', 'Term', 'TermScore', alt.Tooltip('GrowthPct:Q', format='.1f', title='Growth %')]
+            tooltip=['Skill', 'Term', 'TermScore', alt.Tooltip('GrowthPct:Q', format='.1f', title='Actual Growth %')]
         )
     
         # 5. Combine everything
@@ -225,15 +228,14 @@ if uploaded_file:
             y='independent'
         ).properties(
             width='container',
-            height=600 # Slightly taller to accommodate multiple lanes
+            height=600
         ).interactive()
     
         st.altair_chart(excel_style_chart, use_container_width=True)
-        st.info("💡 Right Axis: Shows growth percentage relative to the start for each individual skill lane.")
+        st.info("💡 Right Axis: Shows growth fluctuations within a fixed ±5% window for each skill.")
     
     else:
         st.warning("No data found.")
-
     
     # Create two columns for the buttons
     st.subheader("📤 Upload to Google Drive")
