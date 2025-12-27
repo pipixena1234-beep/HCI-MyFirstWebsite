@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 import requests  # <--- THIS WAS MISSING
 import base64    # <--- ALSO NEEDED FOR THE GITHUB API
+import altair as alt
 
 st.set_page_config(page_title="Student Progress Reports", layout="wide")
 st.title("📊 Student Progress Report System")
@@ -167,9 +168,40 @@ if uploaded_file:
     # =========================
     st.header(f"📘 Dashboard – {selected_sheet}")
     st.dataframe(df)
+    
     for term in selected_terms:
         st.subheader(f"Term: {term}")
-        st.bar_chart(df[df["Term"] == term][skills].mean())
+        
+        # 1. Prepare data for the chart
+        # We take the mean of the skills for this term
+        term_stats = df[df["Term"] == term][skills].mean().reset_index()
+        term_stats.columns = ['Skill', 'Score']
+        
+        # 2. Create the Bar Chart (Column)
+        base = alt.Chart(term_stats).encode(
+            x=alt.X('Skill:N', title='Assessment Skills'),
+            y=alt.Y('Score:Q', title='Average Score', scale=alt.Scale(domain=[0, 100]))
+        )
+        
+        bars = base.mark_bar(color='#1f77b4', opacity=0.7)
+        
+        # 3. Create the Line Chart
+        # We add points to the line to make it visible on the bars
+        line = base.mark_line(color='#ff4b4b', size=3).encode(
+            y='Score:Q'
+        )
+        
+        points = base.mark_point(color='#ff4b4b', size=50).encode(
+            y='Score:Q'
+        )
+        
+        # 4. Layer them together
+        combo_chart = (bars + line + points).properties(
+            width=700,
+            height=400
+        ).interactive()
+        
+        st.altair_chart(combo_chart, use_container_width=True)
 
     # Create two columns for the buttons
     col1, col2 = st.columns(2)
