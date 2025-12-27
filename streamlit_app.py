@@ -189,8 +189,8 @@ if uploaded_file:
         # 3. Create the Base Chart
         # 1. Define the chronological order for sorting
         month_order = [
-            "January", "February", "March", "April", "May", "June", 
-            "July", "August", "September", "October", "November", "December"
+            "Jan", "Feb", "March", "Apr", "May", "June", 
+            "July", "August", "Sept", "Oct", "Nov", "Dec"
         ]
         
         # 2. Update the Base Chart to use this order
