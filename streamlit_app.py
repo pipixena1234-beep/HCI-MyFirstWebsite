@@ -166,64 +166,64 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-   st.header(f"📊 Integrated Performance & Growth Trend – {selected_sheet}")
+    st.header(f"📊 Integrated Performance & Growth Trend – {selected_sheet}")
     
-    if not df.empty:
-        # 1. Prepare Data
-        df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
-        df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
-    
-        # 2. Calculate Growth Percentage
-        terms_sorted = sorted(df['Term'].unique())
-        first_term = terms_sorted[0]
-        df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
-        df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
+        if not df.empty:
+            # 1. Prepare Data
+            df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
+            df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
         
-        df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
-        df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
-    
-        # 3. Create the Base Chart
-        # X-axis is the Term, Color is the Skill
-        base = alt.Chart(df_final).encode(
-            x=alt.X('Term:N', title='Academic Term', sort=terms_sorted)
-        )
-    
-        # 4. MULTIPLE BARS (Average Scores)
-        # We use xOffset to "cluster" the bars for each skill side-by-side within each Term
-        bars = base.mark_bar(opacity=0.6).encode(
-            xOffset='Skill:N',
-            y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Skill:N', legend=alt.Legend(title="Skills Performance")),
-            tooltip=['Term', 'Skill', 'TermScore']
-        )
-    
-        # 5. MULTIPLE LINES (Growth Trend)
-        # These lines will track the GrowthPct for each skill over the terms
-        lines = base.mark_line(size=3).encode(
-            y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b', format='+')),
-            color=alt.Color('Skill:N', legend=None), # Legend is already handled by bars
-            tooltip=['Term', 'Skill', 'GrowthPct']
-        )
-    
-        points = base.mark_point(size=50).encode(
-            y='GrowthPct:Q',
-            color='Skill:N'
-        )
-    
-        # 6. Resolve Dual Axis and Combine
-        # Independent Y-axes: Left = Scores (0-100), Right = Growth %
-        combined_chart = alt.layer(bars, lines + points).resolve_scale(
-            y='independent'
-        ).properties(
-            width='container',
-            height=500,
-            title="Skill Scores (Bars) vs. Growth Percentage (Lines)"
-        ).interactive()
-    
-        st.altair_chart(combined_chart, use_container_width=True)
-    
-    else:
-        st.warning("No data found to generate the combined chart.")
+            # 2. Calculate Growth Percentage
+            terms_sorted = sorted(df['Term'].unique())
+            first_term = terms_sorted[0]
+            df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
+            df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
+            
+            df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
+            df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
+        
+            # 3. Create the Base Chart
+            # X-axis is the Term, Color is the Skill
+            base = alt.Chart(df_final).encode(
+                x=alt.X('Term:N', title='Academic Term', sort=terms_sorted)
+            )
+        
+            # 4. MULTIPLE BARS (Average Scores)
+            # We use xOffset to "cluster" the bars for each skill side-by-side within each Term
+            bars = base.mark_bar(opacity=0.6).encode(
+                xOffset='Skill:N',
+                y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
+                color=alt.Color('Skill:N', legend=alt.Legend(title="Skills Performance")),
+                tooltip=['Term', 'Skill', 'TermScore']
+            )
+        
+            # 5. MULTIPLE LINES (Growth Trend)
+            # These lines will track the GrowthPct for each skill over the terms
+            lines = base.mark_line(size=3).encode(
+                y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b', format='+')),
+                color=alt.Color('Skill:N', legend=None), # Legend is already handled by bars
+                tooltip=['Term', 'Skill', 'GrowthPct']
+            )
+        
+            points = base.mark_point(size=50).encode(
+                y='GrowthPct:Q',
+                color='Skill:N'
+            )
+        
+            # 6. Resolve Dual Axis and Combine
+            # Independent Y-axes: Left = Scores (0-100), Right = Growth %
+            combined_chart = alt.layer(bars, lines + points).resolve_scale(
+                y='independent'
+            ).properties(
+                width='container',
+                height=500,
+                title="Skill Scores (Bars) vs. Growth Percentage (Lines)"
+            ).interactive()
+        
+            st.altair_chart(combined_chart, use_container_width=True)
+        
+        else:
+            st.warning("No data found to generate the combined chart.")
 
     
     # Create two columns for the buttons
