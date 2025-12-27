@@ -174,6 +174,7 @@ if uploaded_file:
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
         # 2. Calculate Growth Percentage
+        # Compares each term against the very first term available
         terms_sorted = sorted(df['Term'].unique())
         first_term = terms_sorted[0]
         df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
@@ -187,7 +188,7 @@ if uploaded_file:
             x=alt.X('Term:N', title='Academic Term', sort=terms_sorted)
         )
     
-        # 4. MULTIPLE BARS (Average Scores) - Left Axis
+        # 4. MULTIPLE BARS (Average Scores) - Primary Y-Axis (Left)
         bars = base.mark_bar(opacity=0.6).encode(
             xOffset='Skill:N',
             y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
@@ -195,15 +196,12 @@ if uploaded_file:
             tooltip=['Term', 'Skill', 'TermScore']
         )
     
-        # 5. MULTIPLE LINES + POINTS (Growth Trend) - Right Axis
-        # Fixed scale domain [-5, 5] as requested to focus on subtle growth
+        # 5. MULTIPLE LINES + POINTS (Growth Trend) - Secondary Y-Axis (Right)
+        # The right axis will auto-scale to fit your actual growth data
         lines = base.mark_line(size=3).encode(
-            y=alt.Y('GrowthPct:Q', 
-                    title='Growth %', 
-                    scale=alt.Scale(domain=[-5, 5], clamp=True), # Focus on -5% to +5%
-                    axis=alt.Axis(titleColor='#ff4b4b', format='+%')),
+            y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b', format='+')),
             color=alt.Color('Skill:N', legend=None), 
-            tooltip=['Term', 'Skill', alt.Tooltip('GrowthPct:Q', format='.2f', title='Growth %')]
+            tooltip=['Term', 'Skill', alt.Tooltip('GrowthPct:Q', format='.1f', title='Growth %')]
         )
     
         points = base.mark_point(size=50).encode(
