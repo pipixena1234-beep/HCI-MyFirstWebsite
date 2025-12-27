@@ -80,6 +80,21 @@ def main():
 
         df[skills] = df[skills].apply(pd.to_numeric, errors='coerce').fillna(0)
         df["Average"] = df[skills].mean(axis=1)
+        
+        def grade(avg):
+        if avg >= 80: return "A"
+        elif avg >= 70: return "B"
+        elif avg >= 60: return "C"
+        elif avg >= 50: return "D"
+        else: return "F"
+
+        df["Grade"] = df["Average"].apply(grade)
+        
+        df["Remarks"] = df["Average"].apply(
+        lambda x: "Excellent work!" if x >= 80 else
+                  "Good effort, keep improving!" if x >= 70 else
+                  "Needs improvement"
+        )
 
         for _, row in df.iterrows():
             student_name = str(row['Student Name']).strip()
@@ -114,12 +129,15 @@ def main():
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", "B", 16)
+            pdf.cell(0, 10, f"Progress Report ({term_clean})", ln=True)
             pdf.cell(0, 10, f"{sheet_name} - {student_name}", ln=True, align='C')
             pdf.ln(10)
             pdf.set_font("Arial", "", 12)
             for s in skills:
                 pdf.cell(0, 8, f"{s}: {int(row[s])}", ln=True)
             pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
+            pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
+            pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
 
             pdf_bytes = BytesIO(pdf.output(dest="S").encode("latin-1"))
             media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf')
