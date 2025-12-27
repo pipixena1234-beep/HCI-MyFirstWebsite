@@ -162,7 +162,14 @@ if uploaded_file:
                   "Good effort, keep improving!" if x >= 70 else
                   "Needs improvement"
     )
+
     # =========================
+    # Dashboard
+    # =========================
+    st.header(f"📘 Dashboard – {selected_sheet}")
+    st.dataframe(df)
+
+        # =========================
     # High-Level Metrics
     # =========================
     st.subheader("📌 Key Highlights")
@@ -203,12 +210,6 @@ if uploaded_file:
         )
     
     st.divider() # Adds a clean line between metrics and the data table
-
-    # =========================
-    # Dashboard
-    # =========================
-    st.header(f"📘 Dashboard – {selected_sheet}")
-    st.dataframe(df)
 
     st.header(f"📊 Integrated Performance & Growth Trend – {selected_sheet}")
 
