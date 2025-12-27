@@ -167,7 +167,7 @@ if uploaded_file:
     # Dashboard
     # =========================
     st.header(f"📊 Integrated Performance & Growth Trend – {selected_sheet}")
-    
+
     if not df.empty:
         # 1. Prepare Data
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
@@ -182,43 +182,40 @@ if uploaded_file:
         df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
         df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
     
-        # 3. Create the Base Chart
-        base = alt.Chart(df_final).encode(
-            x=alt.X('Term:N', title='Academic Term', sort=terms_sorted)
-        )
+        # 3. Create a Vertical Stack of Charts
+        # We loop through each skill to create its own independent "lane"
+        for skill in skills:
+            skill_df = df_final[df_final['Skill'] == skill]
+            
+            # Base Chart for the specific skill
+            base = alt.Chart(skill_df).encode(
+                x=alt.X('Term:N', title=None, sort=terms_sorted)
+            )
     
-        # 4. MULTIPLE BARS (Left Axis)
-        # We remove xOffset since each skill now has its own row
-        bars = base.mark_bar(opacity=0.5, size=30).encode(
-            y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Skill:N', legend=alt.Legend(title="Skills", orient='right'))
-        )
+            # BARS: Average Score (Left Axis)
+            bars = base.mark_bar(opacity=0.6, size=40).encode(
+                y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
+                color=alt.value('#4682B4') # Solid color for bars to keep it clean
+            )
     
-        # 5. MULTIPLE LINES + POINTS (Right Axis)
-        line_layer = base.mark_line(size=3, point=True).encode(
-            y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b', format='+%')),
-            color=alt.Color('Skill:N', legend=None),
-            tooltip=['Term', 'Skill', 'TermScore', 'GrowthPct']
-        )
+            # LINES + POINTS: Growth Trend (Right Axis)
+            lines = base.mark_line(size=3, color='#ff4b4b', point=True).encode(
+                y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b', format='+%')),
+                tooltip=['Term', 'TermScore', 'GrowthPct']
+            )
     
-        # 6. FACET & RESOLVE (The "Top-to-Bottom" Logic)
-        # We layer the bars and lines first, then slice them into rows by Skill
-        combined_chart = alt.layer(bars, line_layer).resolve_scale(
-            y='independent'
-        ).properties(
-            width='container',
-            height=150  # Height of each individual skill row
-        ).facet(
-            row=alt.Row('Skill:N', title=None) # This stacks them top-down
-        ).configure_header(
-            labelFontSize=14,
-            labelFontWeight='bold',
-            labelPadding=10
-        ).configure_view(
-            stroke=None
-        )
+            # Layer the bars and lines for THIS skill
+            chart_row = alt.layer(bars, lines).resolve_scale(
+                y='independent'
+            ).properties(
+                width='container',
+                height=150,
+                title=f"Performance & Growth: {skill}"
+            )
     
-        st.altair_chart(combined_chart, use_container_width=True)
+            # Display each skill one after another
+            st.altair_chart(chart_row, use_container_width=True)
+            st.write("") # Tiny space between "lanes"
     
     else:
         st.warning("No data found to generate the combined chart.")
