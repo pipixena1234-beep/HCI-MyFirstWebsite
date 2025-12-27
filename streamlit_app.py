@@ -166,63 +166,73 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.header(f"📊 Integrated Skill Growth Summary – {selected_sheet}")
+    st.header(f"📊 Integrated Multi-Trend Summary – {selected_sheet}")
     
     if not df.empty:
         # 1. Prepare Data
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
-        # 2. Calculate Growth Percentage (as a decimal for formatting)
+        # 2. Calculate Growth
         terms_sorted = sorted(df['Term'].unique())
         first_term = terms_sorted[0]
-        df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
-        df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
+        df_first = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']].rename(columns={'TermScore': 'Base'})
         
-        df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
-        # Use decimal (e.g., 0.1 for 10%) so Altair can format it correctly
-        df_final['GrowthPct'] = (df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']
+        df_final = pd.merge(df_term_grouped, df_first, on='Skill')
+        df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['Base']) / df_final['Base']) * 100
     
-        # 3. Create the Base encoding
+        # 3. Create Vertical Stagger and Custom Labels
+        skill_list = df_final['Skill'].unique()
+        num_skills = len(skill_list)
+        stagger_step = 50 
+        stagger_map = {skill: i * stagger_step for i, skill in enumerate(skill_list)} 
+        df_final['StaggeredGrowth'] = df_final['GrowthPct'] + df_final['Skill'].map(stagger_map)
+    
+        # Generate custom tick marks for the right axis (0%, 25%, 50% for each lane)
+        tick_values = []
+        for i in range(num_skills):
+            base_offset = i * stagger_step
+            tick_values.extend([base_offset, base_offset + 25, base_offset + 50])
+    
+        # 4. Create the Combined Chart
         base = alt.Chart(df_final).encode(
-            x=alt.X('Term:N', title=None, sort=terms_sorted)
+            x=alt.X('Term:N', title='Academic Term', sort=terms_sorted)
         )
     
-        # 4. BARS (Left Axis - Average Score)
-        bars = base.mark_bar(opacity=0.4, size=15).encode(
-            y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Skill:N', legend=None) # Header labels the skills
+        # BARS: Performance Scores (Left Axis)
+        bars = base.mark_bar(opacity=0.4).encode(
+            xOffset='Skill:N',
+            y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
+            color=alt.Color('Skill:N', legend=alt.Legend(title="Skills", orient='top'))
         )
     
-        # 5. LINES + POINTS (Right Axis - Growth %)
-        # .0% format turns 0.1 into 10%
+        # LINES: Separated Trends (Right Axis)
+        # We use a custom labelExpr to turn the staggered numbers back into percentages (0-50%)
         lines = base.mark_line(size=3, point=True).encode(
-            y=alt.Y('GrowthPct:Q', title='Growth %', 
-                    axis=alt.Axis(titleColor='#ff4b4b', format='.0%')), 
+            y=alt.Y('StaggeredGrowth:Q', 
+                    title='Growth % (by Skill Lane)', 
+                    axis=alt.Axis(
+                        values=tick_values,
+                        labelExpr="datum.value % 50 + '%'", # Shows 0%, 25% etc within each 50-unit lane
+                        titleColor='#ff4b4b'
+                    )),
             color=alt.Color('Skill:N', legend=None),
-            tooltip=['Term', 'Skill', 'TermScore', alt.Tooltip('GrowthPct:Q', format='.1%')]
+            tooltip=['Skill', 'Term', 'TermScore', alt.Tooltip('GrowthPct:Q', format='.1f', title='Growth %')]
         )
     
-        # 6. THE INTEGRATION (Side-by-Side Summary)
-        # We layer the bars and lines, then use 'column' to align them horizontally
-        summary_chart = alt.layer(bars, lines).resolve_scale(
+        # 5. Combine everything
+        excel_style_chart = alt.layer(bars, lines).resolve_scale(
             y='independent'
         ).properties(
-            width=150,   # Width of each individual skill panel
-            height=300   # Height of the overall summary
-        ).facet(
-            column=alt.Column('Skill:N', title=None) # Align skills horizontally
-        ).configure_view(
-            stroke=None
-        ).configure_header(
-            labelFontSize=14,
-            labelFontWeight='bold'
-        )
+            width='container',
+            height=600 # Slightly taller to accommodate multiple lanes
+        ).interactive()
     
-        st.altair_chart(summary_chart, use_container_width=True)
+        st.altair_chart(excel_style_chart, use_container_width=True)
+        st.info("💡 Right Axis: Shows growth percentage relative to the start for each individual skill lane.")
     
     else:
-        st.warning("No data found for the selected sheet.")
+        st.warning("No data found.")
 
     
     # Create two columns for the buttons
