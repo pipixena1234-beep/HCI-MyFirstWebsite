@@ -183,7 +183,7 @@ if uploaded_file:
             y=alt.Y('Score:Q', title='Average Score', scale=alt.Scale(domain=[0, 100]))
         )
         
-        bars = base.mark_bar(color='#1f77b4', opacity=0.7, size=20)
+        bars = base.mark_bar(color='#1f77b4', opacity=0.7, size=40)
         
         # 3. Create the Line Chart
         # We add points to the line to make it visible on the bars
