@@ -182,22 +182,22 @@ if uploaded_file:
             x=alt.X('Term:N', title=None, sort=terms_sorted)
         )
     
-        # 3. Bars (Current Score - Left Axis)
+        # 3. Bars (Left Axis)
         bars = base.mark_bar(opacity=0.3, size=15).encode(
             xOffset='Skill:N',
             y=alt.Y('TermScore:Q', title='Average Score (0-100)', scale=alt.Scale(domain=[0, 100])),
             color=alt.Color('Skill:N', legend=alt.Legend(title="Skills", orient='top'))
         )
     
-        # 4. Lines (Growth Trend - Right Axis)
+        # 4. Lines (Right Axis) - Note: Title is only here to prevent duplication
         lines = base.mark_line(size=3, interpolate='monotone').encode(
             y=alt.Y('GrowthPct:Q', title='Growth % (vs. Start)', axis=alt.Axis(format='+%', titleColor='#E74C3C')),
             color='Skill:N'
         )
     
-        # 5. Points
+        # 5. Points - Note: title=None here prevents the "blurry/double" text effect
         points = base.mark_point(size=60, filled=True).encode(
-            y='GrowthPct:Q',
+            y=alt.Y('GrowthPct:Q', title=None), 
             color='Skill:N',
             tooltip=['Skill', 'Term', 'TermScore', 'GrowthPct']
         )
@@ -205,11 +205,10 @@ if uploaded_file:
         # 6. Zero Baseline
         zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='gray', strokeDash=[2,2]).encode(y='y')
     
-        # 7. Layer and Resolve Axis Duplication
+        # 7. Layer and Resolve
+        # We remove .resolve_axis() and instead use title=None in points to stop duplication
         persuasive_chart = alt.layer(bars, zero_line, lines, points).resolve_scale(
             y='independent'
-        ).resolve_axis(
-            y='min' # <--- THIS FIXES THE DUPLICATED TEXT
         ).properties(
             width='container',
             height=500
