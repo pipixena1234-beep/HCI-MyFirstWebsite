@@ -166,8 +166,8 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.header(f"📊 Integrated Performance & Growth Trend – {selected_sheet}")
-
+    st.header(f"📊 Skill Growth Breakdown — {selected_sheet}")
+    
     if not df.empty:
         # 1. Prepare Data
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
@@ -182,43 +182,46 @@ if uploaded_file:
         df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
         df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
     
-        # 3. Create a Vertical Stack of Charts
-        # We loop through each skill to create its own independent "lane"
+        # 3. Create a vertically stacked layout
         for skill in skills:
+            # Filter data for just this one skill lane
             skill_df = df_final[df_final['Skill'] == skill]
             
-            # Base Chart for the specific skill
+            # Base Chart
             base = alt.Chart(skill_df).encode(
                 x=alt.X('Term:N', title=None, sort=terms_sorted)
             )
     
-            # BARS: Average Score (Left Axis)
-            bars = base.mark_bar(opacity=0.6, size=40).encode(
-                y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
-                color=alt.value('#4682B4') # Solid color for bars to keep it clean
+            # BARS (Left Axis - Average Score)
+            # We use a fixed color for each skill to make them look distinct
+            bars = base.mark_bar(opacity=0.4, size=35).encode(
+                y=alt.Y('TermScore:Q', title='Avg Score', scale=alt.Scale(domain=[0, 100])),
+                color=alt.value('#1f77b4') # Blue bars
             )
     
-            # LINES + POINTS: Growth Trend (Right Axis)
+            # LINE + POINTS (Right Axis - Growth %)
+            # Using point=True here keeps the axis title single and clean
             lines = base.mark_line(size=3, color='#ff4b4b', point=True).encode(
                 y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b', format='+%')),
                 tooltip=['Term', 'TermScore', 'GrowthPct']
             )
     
-            # Layer the bars and lines for THIS skill
-            chart_row = alt.layer(bars, lines).resolve_scale(
+            # Layer them for this specific skill
+            chart_lane = alt.layer(bars, lines).resolve_scale(
                 y='independent'
             ).properties(
+                title=f"Trend for: {skill}",
                 width='container',
-                height=150,
-                title=f"Performance & Growth: {skill}"
+                height=180 # Height for each individual lane
             )
     
-            # Display each skill one after another
-            st.altair_chart(chart_row, use_container_width=True)
-            st.write("") # Tiny space between "lanes"
+            # Display in its own container to ensure it shows up
+            with st.container():
+                st.altair_chart(chart_lane, use_container_width=True)
+                st.write("") # Add a small gap between skills
     
     else:
-        st.warning("No data found to generate the combined chart.")
+        st.warning("No data found to generate the charts.")
 
     
     # Create two columns for the buttons
