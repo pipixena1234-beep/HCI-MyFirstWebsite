@@ -187,10 +187,19 @@ if uploaded_file:
         df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
     
         # 3. Create the Base Chart
+        # 1. Define the chronological order for sorting
+        month_order = [
+            "January", "February", "March", "April", "May", "June", 
+            "July", "August", "September", "October", "November", "December"
+        ]
+        
+        # 2. Update the Base Chart to use this order
         base = alt.Chart(df_final).encode(
-            x=alt.X('Term:N', title='Academic Term', sort=terms_sorted)
+            x=alt.X('Term:N', 
+                    title='Academic Term', 
+                    sort=month_order) # This forces the Jan -> Dec order
         )
-    
+            
         # 4. MULTIPLE BARS (Average Scores) - Primary Y-Axis (Left)
         bars = base.mark_bar(opacity=0.6).encode(
             xOffset='Skill:N',
