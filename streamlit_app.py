@@ -201,7 +201,7 @@ if uploaded_file:
             height=400
         ).interactive()
         
-        st.altair_chart(combo_chart, width=True)
+        st.altair_chart(combo_chart, use_container_width=True)
 
     # Create two columns for the buttons
     st.subheader("📤 Upload to Google Drive")
