@@ -166,50 +166,46 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.header(f"📘 Unified Dashboard – {selected_sheet}")
+    st.header(f"📘 Skill Progress Across Terms – {selected_sheet}")
     
     if not df.empty:
-        # 1. Prepare Term Data (Bars)
+        # 1. Prepare Data
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
+        
+        # Calculate Mean per Term per Skill
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
-        # 2. Prepare Global Data (Line)
+        # Calculate Global Mean per Skill (Benchmark)
         df_global_avg = df_melted.groupby(['Skill'])['TermScore'].mean().reset_index()
         df_global_avg.rename(columns={'TermScore': 'GlobalScore'}, inplace=True)
     
-        # 3. MERGE them into ONE DataFrame
-        # This aligns the global average to every skill in every term automatically
+        # Merge into one source
         df_final = pd.merge(df_term_grouped, df_global_avg, on='Skill')
     
-        # 4. Create the Chart using ONE dataset
-        # By using only 'df_final', we avoid the Layering + Facet error
+        # 2. Define the Chart
+        # We use Term on the X-axis now to show progress over time
         base = alt.Chart(df_final).encode(
-            x=alt.X('Skill:N', title=None, axis=alt.Axis(labelAngle=-45))
-        )
-    
-        # The Bars (Term Score)
-        bars = base.mark_bar(size=20, opacity=0.8).encode(
+            x=alt.X('Term:N', title=None, axis=alt.Axis(labelAngle=-45)),
             y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Term:N', legend=alt.Legend(title="Academic Term"))
+            color=alt.Color('Term:N', legend=alt.Legend(title="Terms"))
         )
     
-        # The Line (Global Score)
+        # Bars: One bar per term, grouped under the Skill facet
+        bars = base.mark_bar(size=30, opacity=0.8)
+    
+        # Line: Shows the Global Average benchmark for that specific skill
         line = base.mark_line(color='red', size=3, strokeDash=[5, 5]).encode(
             y='GlobalScore:Q'
         )
     
-        # The Points (Global Score)
         points = base.mark_point(color='red', size=40, fill='white').encode(
-            y='GlobalScore:Q',
-            tooltip=[
-                alt.Tooltip('TermScore:Q', title='Term Avg', format='.2f'),
-                alt.Tooltip('GlobalScore:Q', title='Global Avg', format='.2f')
-            ]
+            y='GlobalScore:Q'
         )
     
-        # 5. Facet the combined chart
+        # 3. FACET BY SKILL
+        # This creates one column per skill (Logic, UI, etc.)
         unified_chart = (bars + line + points).facet(
-            column=alt.Column('Term:N', title='Term Performance vs. Global Average')
+            column=alt.Column('Skill:N', title='Skill Progress Tracking')
         ).configure_view(
             stroke=None
         )
