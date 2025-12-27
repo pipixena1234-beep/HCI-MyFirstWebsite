@@ -177,6 +177,19 @@ if uploaded_file:
 
     # 1. Top Performing Student
     if not df.empty:
+        # 1. Prepare Data
+        df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
+        df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
+    
+        # 2. Calculate Growth Percentage
+        # Compares each term against the very first term available
+        terms_sorted = sorted(df['Term'].unique())
+        first_term = terms_sorted[0]
+        df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
+        df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
+        
+        df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
+        df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
         # Find the row with the highest average
         top_row = df.loc[df['Average'].idxmax()]
         top_student = top_row['Student Name']
@@ -214,20 +227,6 @@ if uploaded_file:
     st.header(f"📊 Integrated Performance & Growth Trend – {selected_sheet}")
 
     if not df.empty:
-        # 1. Prepare Data
-        df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
-        df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
-    
-        # 2. Calculate Growth Percentage
-        # Compares each term against the very first term available
-        terms_sorted = sorted(df['Term'].unique())
-        first_term = terms_sorted[0]
-        df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
-        df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
-        
-        df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
-        df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
-    
         # 3. Create the Base Chart
         # 1. Define the chronological order for sorting
         month_order = [
