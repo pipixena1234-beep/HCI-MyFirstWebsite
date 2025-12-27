@@ -166,7 +166,7 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.header(f"📊 Skill Growth Breakdown — {selected_sheet}")
+    st.header(f"📊 Skill Growth Comparison Summary – {selected_sheet}")
     
     if not df.empty:
         # 1. Prepare Data
@@ -182,46 +182,43 @@ if uploaded_file:
         df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
         df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
     
-        # 3. Create a vertically stacked layout
-        for skill in skills:
-            # Filter data for just this one skill lane
-            skill_df = df_final[df_final['Skill'] == skill]
-            
-            # Base Chart
-            base = alt.Chart(skill_df).encode(
-                x=alt.X('Term:N', title=None, sort=terms_sorted)
-            )
+        # 3. Define the Charts
+        base = alt.Chart(df_final).encode(
+            x=alt.X('Term:N', title=None, sort=terms_sorted)
+        )
     
-            # BARS (Left Axis - Average Score)
-            # We use a fixed color for each skill to make them look distinct
-            bars = base.mark_bar(opacity=0.4, size=35).encode(
-                y=alt.Y('TermScore:Q', title='Avg Score', scale=alt.Scale(domain=[0, 100])),
-                color=alt.value('#1f77b4') # Blue bars
-            )
+        # BARS (Left Axis - Score)
+        bars = base.mark_bar(opacity=0.4, size=15).encode(
+            y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
+            color=alt.Color('Skill:N', legend=None) # Legend hidden as headers label the skills
+        )
     
-            # LINE + POINTS (Right Axis - Growth %)
-            # Using point=True here keeps the axis title single and clean
-            lines = base.mark_line(size=3, color='#ff4b4b', point=True).encode(
-                y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b', format='+%')),
-                tooltip=['Term', 'TermScore', 'GrowthPct']
-            )
+        # LINES + POINTS (Right Axis - Growth %)
+        lines = base.mark_line(size=3, point=True).encode(
+            y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b', format='+%')),
+            color=alt.Color('Skill:N', legend=None)
+        )
     
-            # Layer them for this specific skill
-            chart_lane = alt.layer(bars, lines).resolve_scale(
-                y='independent'
-            ).properties(
-                title=f"Trend for: {skill}",
-                width='container',
-                height=180 # Height for each individual lane
-            )
+        # 4. THE INTEGRATION (Column Faceting)
+        # Using column=alt.Column('Skill:N') aligns them horizontally
+        summary_chart = alt.layer(bars, lines).resolve_scale(
+            y='independent'
+        ).properties(
+            width=180,   # Smaller width so they fit side-by-side
+            height=250   # Taller height for better visibility
+        ).facet(
+            column=alt.Column('Skill:N', title=None) # This creates the side-by-side alignment
+        ).configure_view(
+            stroke=None
+        ).configure_header(
+            labelFontSize=14,
+            labelFontWeight='bold'
+        )
     
-            # Display in its own container to ensure it shows up
-            with st.container():
-                st.altair_chart(chart_lane, use_container_width=True)
-                st.write("") # Add a small gap between skills
+        st.altair_chart(summary_chart, use_container_width=True)
     
     else:
-        st.warning("No data found to generate the charts.")
+        st.warning("No data found to generate the horizontal summary.")
 
     
     # Create two columns for the buttons
