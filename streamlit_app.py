@@ -166,42 +166,48 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.header(f"📘 Dashboard – {selected_sheet}")
-    st.dataframe(df)
+    st.header(f"📘 Unified Dashboard – {selected_sheet}")
     
-    for term in selected_terms:
-        st.subheader(f"Term: {term}")
-        
-        # 1. Prepare data for the chart
-        # We take the mean of the skills for this term
-        term_stats = df[df["Term"] == term][skills].mean().reset_index()
-        term_stats.columns = ['Skill', 'Score']
-        
-        # 2. Create the Bar Chart (Column)
-        base = alt.Chart(term_stats).encode(
-            x=alt.X('Skill:N', title='Assessment Skills'),
-            y=alt.Y('Score:Q', title='Average Score', scale=alt.Scale(domain=[0, 100]))
+    if not df.empty:
+        # 1. Prepare Data: Melt the skills into a "Long Format"
+        # This turns columns [Logic, UI, etc.] into rows so Altair can group them
+        df_chart = df.melt(
+            id_vars=['Term', 'Student Name'], 
+            value_vars=skills, 
+            var_name='Skill', 
+            value_name='Score'
         )
         
-        bars = base.mark_bar(color='#1f77b4', opacity=0.7, size=40)
-        
-        # 3. Create the Line Chart
-        # We add points to the line to make it visible on the bars
-        line = base.mark_line(color='#ff4b4b', size=3).encode(
-            y='Score:Q'
+        # Calculate the mean score per Skill per Term
+        df_grouped = df_chart.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
+    
+        # 2. Define the Base Chart
+        # X is now Skill, but we use 'column' to group by Term
+        chart = alt.Chart(df_grouped).encode(
+            x=alt.X('Skill:N', title=None, axis=alt.Axis(labelAngle=-45)),
+            y=alt.Y('Score:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
+            color=alt.Color('Term:N', legend=alt.Legend(title="Academic Term")),
+            column=alt.Column('Term:N', title='Progress by Term', spacing=10) # Groups charts side-by-side
         )
-        
-        points = base.mark_point(color='#ff4b4b', size=50).encode(
-            y='Score:Q'
+    
+        # 3. Add the Thinner Bars
+        bars = chart.mark_bar(size=20, opacity=0.8)
+    
+        # 4. Add the Line + Points
+        line = chart.mark_line(color='red', size=2)
+        points = chart.mark_point(color='red', size=30)
+    
+        # 5. Combine and Display
+        unified_chart = (bars + line + points).properties(
+            width=150, # Width of each individual term group
+            height=300
+        ).configure_view(
+            stroke=None # Removes the borders between groups for a cleaner look
         )
-        
-        # 4. Layer them together
-        combo_chart = (bars + line + points).properties(
-            width=700,
-            height=400
-        ).interactive()
-        
-        st.altair_chart(combo_chart, use_container_width=True)
+    
+        st.altair_chart(unified_chart)
+    else:
+        st.warning("No data available to display chart.")
 
     # Create two columns for the buttons
     st.subheader("📤 Upload to Google Drive")
