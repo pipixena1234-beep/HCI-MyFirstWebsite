@@ -2,12 +2,8 @@ name: Scheduled Report Upload (5-Min Test)
 
 on:
   schedule:
-    - cron: '*/7 * * * *'  # Runs every 7 minutes
-  workflow_dispatch:      # Allows manual testing in the Actions tab
-
-# This allows the keepalive-workflow to "poke" the repo to keep it active
-permissions:
-  contents: write
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   run-upload:
@@ -19,11 +15,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11' # Upgraded to 3.11 to avoid EOL warnings
+          python-version: '3.11'
 
       - name: Install Dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Execute Upload Script
         env:
@@ -31,10 +26,3 @@ jobs:
           GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
           DATA_EXCEL_FILE_ID: ${{ secrets.DATA_EXCEL_FILE_ID }}
         run: python automated_upload.py
-
-      # --- KEEP ALIVE LOGIC ---
-      # This resets the 60-day inactivity timer automatically
-      - name: Keepalive Workflow
-        uses: gautamkrishnar/keepalive-workflow@v1
-        with:
-          use_api: true
