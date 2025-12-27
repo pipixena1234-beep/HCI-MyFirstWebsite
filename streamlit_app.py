@@ -171,6 +171,12 @@ if uploaded_file:
         st.subheader(f"Term: {term}")
         st.bar_chart(df[df["Term"] == term][skills].mean())
 
+    st.subheader("📤 Upload to Google Drive")
+    folder_id_input = st.text_input(
+        "Enter Google Drive Folder ID",
+        value="0ALncbMfl-gjdUk9PVA"
+    )
+
     # Create two columns for the buttons
     col1, col2 = st.columns(2)
 
@@ -203,12 +209,7 @@ if uploaded_file:
     # =========================
     # Upload to Google Drive (Column 2)
     # =========================
-    st.subheader("📤 Upload to Google Drive")
-    folder_id_input = st.text_input(
-        "Enter Google Drive Folder ID",
-        value="0ALncbMfl-gjdUk9PVA"
-    )
-
+    
     with col2:
         if st.button("Upload to Google Drive"):
             try:
