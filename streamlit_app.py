@@ -189,13 +189,15 @@ if uploaded_file:
             color=alt.Color('Skill:N', legend=alt.Legend(title="Skills", orient='top'))
         )
     
-        # 4. Lines (Right Axis) - Note: Title is only here to prevent duplication
+        # 4. Lines (Right Axis) 
+        # This is the "Primary" definition for the right axis
         lines = base.mark_line(size=3, interpolate='monotone').encode(
             y=alt.Y('GrowthPct:Q', title='Growth % (vs. Start)', axis=alt.Axis(format='+%', titleColor='#E74C3C')),
             color='Skill:N'
         )
     
-        # 5. Points - Note: title=None here prevents the "blurry/double" text effect
+        # 5. Points
+        # We set title=None here so it doesn't try to draw the axis name a second time
         points = base.mark_point(size=60, filled=True).encode(
             y=alt.Y('GrowthPct:Q', title=None), 
             color='Skill:N',
@@ -203,11 +205,13 @@ if uploaded_file:
         )
     
         # 6. Zero Baseline
-        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='gray', strokeDash=[2,2]).encode(y='y')
+        zero_line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule(color='gray', strokeDash=[2,2]).encode(
+            y=alt.Y('y:Q', title=None)
+        )
     
-        # 7. Layer and Resolve
-        # We remove .resolve_axis() and instead use title=None in points to stop duplication
-        persuasive_chart = alt.layer(bars, zero_line, lines, points).resolve_scale(
+        # 7. Layer and Resolve Scale
+        # We only use resolve_scale. No resolve_axis to avoid the crash.
+        persuasive_chart = (bars + zero_line + lines + points).resolve_scale(
             y='independent'
         ).properties(
             width='container',
