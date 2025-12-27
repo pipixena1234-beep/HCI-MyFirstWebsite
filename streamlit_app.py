@@ -166,59 +166,63 @@ if uploaded_file:
     # =========================
     # Dashboard
     # =========================
-    st.header(f"📊 Skill Growth Comparison Summary – {selected_sheet}")
+    st.header(f"📊 Integrated Multi-Trend Summary – {selected_sheet}")
     
     if not df.empty:
         # 1. Prepare Data
         df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='TermScore')
         df_term_grouped = df_melted.groupby(['Term', 'Skill'])['TermScore'].mean().reset_index()
     
-        # 2. Calculate Growth Percentage
+        # 2. Calculate Growth & Stagger Offset
         terms_sorted = sorted(df['Term'].unique())
         first_term = terms_sorted[0]
-        df_first_values = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']]
-        df_first_values.rename(columns={'TermScore': 'BaselineScore'}, inplace=True)
+        df_first = df_term_grouped[df_term_grouped['Term'] == first_term][['Skill', 'TermScore']].rename(columns={'TermScore': 'Base'})
         
-        df_final = pd.merge(df_term_grouped, df_first_values, on='Skill')
-        df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['BaselineScore']) / df_final['BaselineScore']) * 100
+        df_final = pd.merge(df_term_grouped, df_first, on='Skill')
+        df_final['GrowthPct'] = ((df_final['TermScore'] - df_final['Base']) / df_final['Base']) * 100
     
-        # 3. Define the Charts
+        # 3. Create a Vertical "Stagger" for the Lines
+        # We assign each skill a 'Tier' so the lines don't sit on top of each other
+        skill_list = df_final['Skill'].unique()
+        stagger_map = {skill: i * 50 for i, skill in enumerate(skill_list)} 
+        df_final['StaggeredGrowth'] = df_final['GrowthPct'] + df_final['Skill'].map(stagger_map)
+    
+        # 4. Create the Combined Chart
         base = alt.Chart(df_final).encode(
-            x=alt.X('Term:N', title=None, sort=terms_sorted)
+            x=alt.X('Term:N', title='Academic Term', sort=terms_sorted)
         )
     
-        # BARS (Left Axis - Score)
-        bars = base.mark_bar(opacity=0.4, size=15).encode(
-            y=alt.Y('TermScore:Q', title='Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('Skill:N', legend=None) # Legend hidden as headers label the skills
+        # BARS: Performance Scores (Left Axis)
+        # Using xOffset to group bars side-by-side
+        bars = base.mark_bar(opacity=0.4).encode(
+            xOffset='Skill:N',
+            y=alt.Y('TermScore:Q', title='Average Score', scale=alt.Scale(domain=[0, 100])),
+            color=alt.Color('Skill:N', legend=alt.Legend(title="Skills", orient='top'))
         )
     
-        # LINES + POINTS (Right Axis - Growth %)
+        # LINES: Separated Trends (Right Axis)
+        # By using 'StaggeredGrowth', lines align top-to-bottom automatically
         lines = base.mark_line(size=3, point=True).encode(
-            y=alt.Y('GrowthPct:Q', title='Growth %', axis=alt.Axis(titleColor='#ff4b4b', format='+%')),
-            color=alt.Color('Skill:N', legend=None)
+            y=alt.Y('StaggeredGrowth:Q', 
+                    title='Growth Trends (Staggered View)', 
+                    axis=alt.Axis(labels=False, ticks=False)), # Hide labels to prevent confusion
+            color=alt.Color('Skill:N', legend=None),
+            tooltip=['Skill', 'Term', 'TermScore', 'GrowthPct']
         )
     
-        # 4. THE INTEGRATION (Column Faceting)
-        # Using column=alt.Column('Skill:N') aligns them horizontally
-        summary_chart = alt.layer(bars, lines).resolve_scale(
+        # 5. Combine everything into one visual
+        excel_style_chart = alt.layer(bars, lines).resolve_scale(
             y='independent'
         ).properties(
-            width=180,   # Smaller width so they fit side-by-side
-            height=250   # Taller height for better visibility
-        ).facet(
-            column=alt.Column('Skill:N', title=None) # This creates the side-by-side alignment
-        ).configure_view(
-            stroke=None
-        ).configure_header(
-            labelFontSize=14,
-            labelFontWeight='bold'
-        )
+            width='container',
+            height=500
+        ).interactive()
     
-        st.altair_chart(summary_chart, use_container_width=True)
+        st.altair_chart(excel_style_chart, use_container_width=True)
+        st.info("💡 Note: Lines are staggered vertically to show individual trends without overlapping.")
     
     else:
-        st.warning("No data found to generate the horizontal summary.")
+        st.warning("No data found.")
 
     
     # Create two columns for the buttons
