@@ -169,52 +169,61 @@ if uploaded_file:
     st.header(f"📘 Unified Dashboard – {selected_sheet}")
     
     if not df.empty:
-        # 1. Prepare Data
-        df_melted = df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='Score')
-        df_scores = df_melted.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
-        df_counts = df.groupby(['Term', 'Grade']).size().reset_index(name='Count')
+        # 1. Melt data so we have a row for every Skill per Student per Term
+        df_melted = df.melt(
+            id_vars=['Term', 'Student Name'], 
+            value_vars=skills, 
+            var_name='Skill', 
+            value_name='Score'
+        )
+        
+        # 2. Calculate the Mean Score per Skill
+        df_grouped = df_melted.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
     
-        # 2. Create the Layered Chart function
-        def make_term_chart(term_name):
-            # Subset data for this term
-            term_score_data = df_scores[df_scores['Term'] == term_name]
-            term_count_data = df_counts[df_counts['Term'] == term_name]
+        # 3. MAP Scores to Grade Points for the Line Chart
+        # We create a numeric value for grades: A=90, B=75, C=65, D=55, F=40
+        # This ensures the line sits in the middle of the grade bracket
+        def map_to_grade_level(score):
+            if score >= 80: return 90  # Middle of A range
+            if score >= 70: return 75  # Middle of B range
+            if score >= 60: return 65  # Middle of C range
+            if score >= 50: return 55  # Middle of D range
+            return 40                  # F range
     
-            # Bar chart for scores
-            bars = alt.Chart(term_score_data).mark_bar(size=20, opacity=0.7).encode(
-                x=alt.X('Skill:N', title='Skills / Grades'),
-                y=alt.Y('Score:Q', title='Avg Score', scale=alt.Scale(domain=[0, 100])),
-                color=alt.value('#1f77b4')
-            )
+        df_grouped['GradeLevel'] = df_grouped['Score'].apply(map_to_grade_level)
     
-            # Line chart for counts
-            line = alt.Chart(term_count_data).mark_line(color='#ff4b4b', strokeWidth=3).encode(
-                x=alt.X('Grade:N'),
-                y=alt.Y('Count:Q', title='Student Count')
-            )
-            
-            points = line.mark_point(color='#ff4b4b', size=50)
+        # 4. Define the Base (Scores)
+        base = alt.Chart(df_grouped).encode(
+            x=alt.X('Skill:N', title=None, axis=alt.Axis(labelAngle=-45)),
+            color=alt.Color('Term:N', legend=alt.Legend(title="Academic Term"))
+        )
     
-            # Layer them with independent Y axes
-            return alt.layer(bars, line + points).resolve_scale(
-                y='independent'
-            ).properties(
-                title=f"Term: {term_name}",
-                width=250,
-                height=300
-            )
+        # 5. Bars show the actual Score
+        bars = base.mark_bar(size=20, opacity=0.8).encode(
+            y=alt.Y('Score:Q', title='Avg Score & Grade Level', scale=alt.Scale(domain=[0, 100]))
+        )
     
-        # 3. Display charts side-by-side using Streamlit columns
-        all_terms = sorted(df['Term'].unique())
-        cols = st.columns(len(all_terms))
+        # 6. Line shows the "Grade Trend"
+        # Using the GradeLevel ensures the line tracks the "Letter Grade" status
+        line = base.mark_line(color='red', size=2, strokeDash=[5, 5]).encode(
+            y='GradeLevel:Q'
+        )
+        
+        points = base.mark_point(color='red', size=40).encode(
+            y='GradeLevel:Q',
+            tooltip=['Term', 'Skill', 'Score']
+        )
     
-        for i, term in enumerate(all_terms):
-            with cols[i]:
-                chart = make_term_chart(term)
-                st.altair_chart(chart, use_container_width=True)
+        # 7. Unified Layer + Facet
+        unified_chart = (bars + line + points).facet(
+            column=alt.Column('Term:N', title='Progress by Term')
+        ).configure_view(
+            stroke=None
+        )
     
+        st.altair_chart(unified_chart, use_container_width=True)
     else:
-        st.warning("No data available.")
+        st.warning("No data available to display chart.")
 
     # Create two columns for the buttons
     st.subheader("📤 Upload to Google Drive")
