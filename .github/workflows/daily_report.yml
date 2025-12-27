@@ -1,8 +1,9 @@
 name: Scheduled Report Upload (6-Min Test)
 
 on:
-    - cron: '*/6 * * * *'  # Runs every 6 minutes
-  workflow_dispatch:      # Allows manual testing in the Actions tab
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
 
 jobs:
   run-upload:
