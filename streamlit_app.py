@@ -409,7 +409,7 @@ if uploaded_file:
                 # Layering and applying the Yellow Background
                 growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(
                     height=450,
-                    background=theme_bg  # Matches your app color
+                    background='#ffbc00'  # Matches your app color
                     ).configure_axis(
                     # Styling for the Titles (Score, Academic Term, Growth %)
                     titleColor='black',
@@ -429,9 +429,7 @@ if uploaded_file:
                         labelColor='black',
                         labelFontWeight='bold',
                         titleFontWeight='bold'
-                    ).configure_view(
-                        strokeOpacity=0
-                    )
+                    ) #.configure_view(strokeOpacity=0)
                     
                 st.altair_chart(growth_chart, use_container_width=True)
             else:
