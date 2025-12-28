@@ -263,6 +263,28 @@ if uploaded_file:
         
         # --- Right Column: Donut Chart (Top) & Statistic Reading (Below) ---
         with col_chart2:
+            # 2. Statistic Reading (Below Donut)
+            st.markdown("---")
+            st.markdown("### 💡 **Automated Class Analysis**")
+            
+            if not df.empty:
+                avg_skills = df[skills].mean().sort_values()
+                weakest_skill = avg_skills.index[0]
+                strongest_skill = avg_skills.index[-1]
+                
+                # Using inner columns inside col_chart2 for a clean side-by-side metric look
+                stat_col1, stat_col2 = st.columns(2)
+                
+                with stat_col1:
+                    st.success(f"🌟 **Top Skill**")
+                    st.write(f"**{strongest_skill}**")
+                    st.caption(f"Avg: {avg_skills.max():.1f}")
+                    
+                with stat_col2:
+                    st.warning(f"⚠️ **Focus Area**")
+                    st.write(f"**{weakest_skill}**")
+                    st.caption(f"Avg: {avg_skills.min():.1f}")
+            
             # 1. Donut Chart (Top)
             st.subheader("Grade Distribution (%)")
             
@@ -293,28 +315,6 @@ if uploaded_file:
             )
         
             st.altair_chart((pie + text).properties(height=350), use_container_width=True)
-        
-            # 2. Statistic Reading (Below Donut)
-            st.markdown("---")
-            st.markdown("### 💡 **Automated Class Analysis**")
-            
-            if not df.empty:
-                avg_skills = df[skills].mean().sort_values()
-                weakest_skill = avg_skills.index[0]
-                strongest_skill = avg_skills.index[-1]
-                
-                # Using inner columns inside col_chart2 for a clean side-by-side metric look
-                stat_col1, stat_col2 = st.columns(2)
-                
-                with stat_col1:
-                    st.success(f"🌟 **Top Skill**")
-                    st.write(f"**{strongest_skill}**")
-                    st.caption(f"Avg: {avg_skills.max():.1f}")
-                    
-                with stat_col2:
-                    st.warning(f"⚠️ **Focus Area**")
-                    st.write(f"**{weakest_skill}**")
-                    st.caption(f"Avg: {avg_skills.min():.1f}")
 
     # =====================================
     # 8. Report Export & Google Drive
