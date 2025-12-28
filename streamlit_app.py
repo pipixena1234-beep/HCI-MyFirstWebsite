@@ -230,27 +230,26 @@ if uploaded_file:
         m3.metric("🎯 Class Success Rate", f"{rate:.0f}%", "Grades A & B")
 
         # =====================================
-        # 7. & 8. Side-by-Side Analytics
+        # 7, 8, & 9. Side-by-Side Analytics & Insights
         # =====================================
         st.header("📊 Subject Analytics & Insights")
         
+        # Row 1: Two main columns
         col_chart1, col_chart2 = st.columns(2)
         
+        # --- Left Column: Performance & Growth ---
         with col_chart1:
             st.subheader("Performance & Growth Trends")
             month_order = ["Jan", "Feb", "March", "Apr", "May", "June", "July", "August", "Sept", "Oct", "Nov", "Dec"]
             
-            # Base chart for the Dual Axis layout
             base_chart = alt.Chart(df_final).encode(x=alt.X('Term:N', sort=month_order, title="Academic Term"))
             
-            # Background Bars (Scores)
             bars = base_chart.mark_bar(opacity=0.4).encode(
                 xOffset='Skill:N',
                 y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Average Score"),
                 color=alt.Color('Skill:N', legend=alt.Legend(orient='bottom'))
             )
             
-            # Overlay Lines (Growth)
             lines = base_chart.mark_line(size=3, point=True).encode(
                 y=alt.Y('Growth:Q', title="Growth %", axis=alt.Axis(format='+')),
                 color='Skill:N',
@@ -260,13 +259,14 @@ if uploaded_file:
             growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
             st.altair_chart(growth_chart, use_container_width=True)
         
+        # --- Right Column: Donut Chart (Top) & Statistic Reading (Below) ---
         with col_chart2:
+            # 1. Donut Chart (Top)
             st.subheader("Grade Distribution (%)")
             
             grade_order = ["A", "B", "C", "D", "F"]
             grade_colors = ['#2ecc71', '#3498db', '#f1c40f', '#e67e22', '#e74c3c']
             
-            # Base configuration for the donut chart
             base_pie = alt.Chart(df).encode(
                 theta=alt.Theta(field="Grade", aggregate="count", type="quantitative", stack=True),
                 color=alt.Color(
@@ -278,10 +278,8 @@ if uploaded_file:
                 )
             )
         
-            # The Slices (Donut style)
             pie = base_pie.mark_arc(innerRadius=60, outerRadius=140)
         
-            # Percentage Labels inside the slices
             text = base_pie.mark_text(radius=100, size=14, fontWeight="bold", color="white").encode(
                 text=alt.Text('pct:Q', format='.0%')
             ).transform_joinaggregate(
@@ -289,10 +287,32 @@ if uploaded_file:
             ).transform_calculate(
                 pct='datum.count / datum.total'
             ).transform_filter(
-                alt.datum.pct > 0.04  # Only show text if slice is > 4% to prevent overlapping
+                alt.datum.pct > 0.04 
             )
         
-            st.altair_chart((pie + text).properties(height=450), use_container_width=True)
+            st.altair_chart((pie + text).properties(height=350), use_container_width=True)
+        
+            # 2. Statistic Reading (Below Donut)
+            st.markdown("---")
+            st.markdown("### 💡 **Automated Class Analysis**")
+            
+            if not df.empty:
+                avg_skills = df[skills].mean().sort_values()
+                weakest_skill = avg_skills.index[0]
+                strongest_skill = avg_skills.index[-1]
+                
+                # Using inner columns inside col_chart2 for a clean side-by-side metric look
+                stat_col1, stat_col2 = st.columns(2)
+                
+                with stat_col1:
+                    st.success(f"🌟 **Top Skill**")
+                    st.write(f"**{strongest_skill}**")
+                    st.caption(f"Avg: {avg_skills.max():.1f}")
+                    
+                with stat_col2:
+                    st.warning(f"⚠️ **Focus Area**")
+                    st.write(f"**{weakest_skill}**")
+                    st.caption(f"Avg: {avg_skills.min():.1f}")
         
         # =====================================
         # 9. Automated Subject Insights
