@@ -1,4 +1,8 @@
 [server]
+# This helps mobile Chrome stay connected
 enableCORS = false
 enableXsrfProtection = false
-maxUploadSize = 500 # set to a higher value in MB
+maxUploadSize = 500
+
+[browser]
+gatherUsageStats = false
