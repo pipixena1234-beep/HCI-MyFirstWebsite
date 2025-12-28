@@ -93,26 +93,23 @@ def add_custom_style(logo_path):
             color: #000000 !important; 
         }}
 
-        /* 1. Style st.success (Top Skill) to be Light Green */
-        [data-testid="stNotification"] {{
+       /* 4. TOP SKILL (Success) - Light Green Card */
+        [data-testid="stNotification"][data-testattribute="stSuccess"] {{
             background-color: #90EE90 !important;
-            color: #000000 !important;
-            border: 2px solid #000000 !important;
-            border-radius: 10px !important;
-        }}
-
-        /* 2. Specific override for Warning (Focus Area) to be Radish Red */
-        /* Note: Streamlit uses the same container for both, so we target the icon or text */
-        .st-emotion-cache-p4m01c {{
-            background-color: #D0312D !important; /* Radish Red */
-            color: white !important;
-            border: 2px solid #000000 !important;
-        }}
-
-        /* Alternative: Styling the inner text of the analysis boxes */
-        [data-testid="stVerticalBlock"] > div > div > div > div {{
-            font-weight: bold !important;
             color: black !important;
+            border: 2px solid black !important;
+        }}
+        
+        /* 5. FOCUS AREA (Warning) - Radish Red Card */
+        [data-testid="stNotification"][data-testattribute="stWarning"] {{
+            background-color: #D0312D !important;
+            color: white !important;
+            border: 2px solid black !important;
+        }}
+        
+        /* Force text color inside those notifications */
+        [data-testid="stNotification"] p, [data-testid="stNotification"] div {{
+            color: inherit !important;
         }}
         </style>
         """,
