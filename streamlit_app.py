@@ -161,13 +161,7 @@ if uploaded_file:
         lambda x: "Excellent work!" if x >= 80 else
                   "Good effort, keep improving!" if x >= 70 else
                   "Needs improvement"
-    )
-
-    # =========================
-    # Dashboard
-    # =========================
-    st.header(f"📘 Dashboard – {selected_sheet}")
-    
+    )    
     # =========================
     # Data Quality & Instant Edit
     # =========================
@@ -205,6 +199,10 @@ if uploaded_file:
     else:
         df = edited_df
 
+    # =========================
+    # Dashboard
+    # =========================
+    st.header(f"📘 Dashboard – {selected_sheet}")
     # =========================
     # High-Level Metrics
     # =========================
