@@ -169,6 +169,10 @@ def extract_and_flatten(df_raw):
 # =====================================
 uploaded_file = st.file_uploader("Upload Excel (.xlsx)", type=["xlsx"])
 
+if uploaded_file is None:
+    st.info("Please upload the Excel file to begin.")
+    st.stop() # This prevents Tornado from running the rest of the heavy code
+
 if uploaded_file:
     xls = pd.ExcelFile(uploaded_file)
     selected_sheet = st.selectbox("Select Subject", xls.sheet_names)
