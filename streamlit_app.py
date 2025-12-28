@@ -81,7 +81,7 @@ def add_custom_style(logo_path):
         /* This targets the internal button inside the stFileUploader */
         [data-testid="stFileUploader"] section button {{
             background-color: #D0312D !important;
-            color: white !important;
+            color: black !important;
             border: 1px solid #D0312D !important;
             border-radius: 8px !important;
             font-weight: bold !important;
