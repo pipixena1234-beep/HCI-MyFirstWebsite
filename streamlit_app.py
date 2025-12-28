@@ -32,7 +32,7 @@ def add_custom_style(logo_path):
         
         /* 2. Sidebar Background - Purple */
         [data-testid="stSidebar"] {{ 
-            background-color: #6A1B9A !important; 
+            background-color: #602b7b !important; 
         }}
 
         /* 3. Inject Logo to Top Left of Sidebar */
