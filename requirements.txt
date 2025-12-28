@@ -10,3 +10,4 @@ oauth2client>=4.1.3
 openpyxl
 google-auth-httplib2>=0.1.0
 altair
+xlsxwriter
