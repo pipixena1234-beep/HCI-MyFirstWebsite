@@ -487,6 +487,13 @@ if uploaded_file:
                 if not avg_skills.empty:
                     stat_col1, stat_col2 = st.columns(2)
                     with stat_col1:
+                        st.markdown(f'''
+                            <div style="background-color:#90EE90; padding:15px; border-radius:10px; border:2px solid black;">
+                                <p style="margin:0; font-size:16px;">🌟 <b>Top Skill</b></p>
+                                <p style="margin:0; font-size:20px;">{avg_skills.index[-1]}</p>
+                                <p style="margin:0; font-size:14px;">Avg: {avg_skills.max():.1f}</p>
+                            </div>
+                        ''', unsafe_allow_html=True)
                         st.success("🌟 **Top Skill**")
                         st.write(f"**{avg_skills.index[-1]}**")
                         st.caption(f"Avg: {avg_skills.max():.1f}")
