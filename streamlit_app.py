@@ -85,7 +85,7 @@ def add_custom_style(logo_path):
 
         /* 7. Clean Transparent Containers for Charts */
         .vega-embed {{
-            background-color: transparent !important;
+            background-color: #ffbc00 !important;
         }}
         /* Ensure Sidebar text remains readable (if black is too dark on purple) */
         /* If you want sidebar text white, change this to white */
