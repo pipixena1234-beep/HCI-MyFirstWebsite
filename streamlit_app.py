@@ -230,25 +230,70 @@ if uploaded_file:
         m3.metric("🎯 Class Success Rate", f"{rate:.0f}%", "Grades A & B")
 
         # =====================================
-        # 7. Growth Chart (Dual Axis)
+        # 7. & 8. Side-by-Side Analytics
         # =====================================
-        st.header("📊 Performance & Growth Trends")
+        st.header("📊 Subject Analytics")
         
-        base_chart = alt.Chart(df_final).encode(x=alt.X('Term:N', sort=month_order))
+        # Create two columns for the charts
+        col_chart1, col_chart2 = st.columns(2)
         
-        bars = base_chart.mark_bar(opacity=0.5).encode(
-            xOffset='Skill:N',
-            y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100])),
-            color='Skill:N'
-        )
+        with col_chart1:
+            st.subheader("Performance & Growth Trends")
+            
+            # Sorting order for X-axis
+            month_order = ["Jan", "Feb", "March", "Apr", "May", "June", "July", "August", "Sept", "Oct", "Nov", "Dec"]
+            
+            base_chart = alt.Chart(df_final).encode(x=alt.X('Term:N', sort=month_order, title="Academic Term"))
+            
+            # Bars for raw scores
+            bars = base_chart.mark_bar(opacity=0.4).encode(
+                xOffset='Skill:N',
+                y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Average Score"),
+                color=alt.Color('Skill:N', legend=alt.Legend(orient='bottom'))
+            )
+            
+            # Lines for growth percentage
+            lines = base_chart.mark_line(size=3, point=True).encode(
+                y=alt.Y('Growth:Q', title="Growth %", axis=alt.Axis(format='+')),
+                color='Skill:N',
+                tooltip=['Term', 'Skill', alt.Tooltip('Score:Q', format='.1f'), alt.Tooltip('Growth:Q', format='.1f')]
+            )
+            
+            # Combine with dual axis
+            growth_chart = alt.layer(bars, lines).resolve_scale(
+                y='independent'
+            ).properties(height=450)
+            
+            st.altair_chart(growth_chart, use_container_width=True)
         
-        lines = base_chart.mark_line(size=3, point=True).encode(
-            y=alt.Y('Growth:Q', title="Growth %", axis=alt.Axis(format='+')),
-            color='Skill:N',
-            tooltip=['Term', 'Skill', 'Score', 'Growth']
-        )
-        
-        st.altair_chart(alt.layer(bars, lines).resolve_scale(y='independent').properties(height=500), use_container_width=True)
+        with col_chart2:
+            st.subheader("Grade Distribution")
+            
+            # Logical order for grades
+            grade_order = ["A", "B", "C", "D", "F"]
+            
+            # Count students per grade
+            grade_chart = alt.Chart(df).mark_bar().encode(
+                x=alt.X('Grade:N', sort=grade_order, title='Final Grade'),
+                y=alt.Y('count():Q', title='Number of Students'),
+                color=alt.Color('Grade:N', 
+                                sort=grade_order, 
+                                legend=None,
+                                scale=alt.Scale(domain=grade_order, 
+                                                range=['#2ecc71', '#3498db', '#f1c40f', '#e67e22', '#e74c3c'])),
+                tooltip=['Grade', alt.Tooltip('count()', title='Count')]
+            ).properties(height=450)
+            
+            # Add text labels on top of bars
+            text = grade_chart.mark_text(
+                align='center',
+                baseline='bottom',
+                dy=-5
+            ).encode(
+                text='count():Q'
+            )
+            
+            st.altair_chart(grade_chart + text, use_container_width=True)
 
     # =====================================
     # 8. Report Export & Google Drive
