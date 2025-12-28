@@ -494,13 +494,14 @@ if uploaded_file:
                                 <p style="margin:0; font-size:14px;">Avg: {avg_skills.max():.1f}</p>
                             </div>
                         ''', unsafe_allow_html=True)
-                        st.success("🌟 **Top Skill**")
-                        st.write(f"**{avg_skills.index[-1]}**")
-                        st.caption(f"Avg: {avg_skills.max():.1f}")
                     with stat_col2:
-                        st.warning("⚠️ **Focus Area**")
-                        st.write(f"**{avg_skills.index[0]}**")
-                        st.caption(f"Avg: {avg_skills.min():.1f}")
+                        st.markdown(f'''
+                            <div style="background-color:#D0312D; padding:15px; border-radius:10px; border:2px solid black; color:white;">
+                                <p style="margin:0; font-size:16px; color:white;">⚠️ <b>Focus Area</b></p>
+                                <p style="margin:0; font-size:20px; color:white;">{avg_skills.index[0]}</p>
+                                <p style="margin:0; font-size:14px; color:white;">Avg: {avg_skills.min():.1f}</p>
+                            </div>
+                        ''', unsafe_allow_html=True)
                 
 
     # =====================================
