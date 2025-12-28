@@ -105,7 +105,7 @@ def extract_and_flatten(df_raw):
         else:
             i += 1
     return pd.DataFrame(rows)
-
+    
 # =========================
 # Upload Excel
 # =========================
@@ -114,89 +114,79 @@ uploaded_file = st.file_uploader("Upload Excel (.xlsx) with stacked term tables"
 if uploaded_file:
     xls = pd.ExcelFile(uploaded_file)
     selected_sheet = st.selectbox("Select Sheet (Subject)", xls.sheet_names)
-    df_raw = pd.read_excel(uploaded_file, sheet_name=selected_sheet, header=None)
-    df = extract_and_flatten(df_raw)
+    
+    # --- 1. SESSION STATE INITIALIZATION ---
+    # We use a unique key for each subject to keep data separate
+    state_key = f"df_{selected_sheet}"
+    
+    if state_key not in st.session_state:
+        # Initial load from Excel
+        df_raw = pd.read_excel(uploaded_file, sheet_name=selected_sheet, header=None)
+        st.session_state[state_key] = extract_and_flatten(df_raw)
+
+    # Always pull data from session state to ensure edits are reflected
+    df = st.session_state[state_key]
 
     if df.empty:
         st.error("❌ No valid term tables detected.")
         st.stop()
 
-    # =========================
-    # Clean columns
-    # =========================
+    # --- 2. DATA CLEANING & GRADING ---
     skills = ["Logic", "UI", "Animation", "Teamwork"]
-    df[skills] = df[skills].apply(pd.to_numeric)
+    for s in skills:
+        df[s] = pd.to_numeric(df[s], errors='coerce')
 
-    # =========================
-    # Term selection
-    # =========================
-    st.subheader("📅 Term Selection")
-    select_terms = st.checkbox("Select terms to generate reports for")
-    all_terms = sorted(df["Term"].unique())
-
-    if select_terms:
-        options_with_select_all = ["Select All"] + all_terms
-        selected_terms = st.multiselect("Available terms:", options_with_select_all, default=all_terms)
-        if "Select All" in selected_terms:
-            selected_terms = all_terms
-    else:
-        selected_terms = all_terms
-
-    df = df[df["Term"].isin(selected_terms)]
-
-    # =========================
-    # Grading
-    # =========================
+    # Calculations must happen on the session state data
     df["Average"] = df[skills].mean(axis=1)
-
-    def grade(avg):
+    
+    def get_grade(avg):
         if avg >= 80: return "A"
         elif avg >= 70: return "B"
         elif avg >= 60: return "C"
         elif avg >= 50: return "D"
         else: return "F"
 
-    df["Grade"] = df["Average"].apply(grade)
+    df["Grade"] = df["Average"].apply(get_grade)
     df["Remarks"] = df["Average"].apply(
-        lambda x: "Excellent work!" if x >= 80 else
-                  "Good effort, keep improving!" if x >= 70 else
-                  "Needs improvement"
-    )    
+        lambda x: "Excellent work!" if x >= 80 else "Good effort!" if x >= 70 else "Needs improvement"
+    )
+
     # =====================================
-    # 5. Data Editor & Quality Check
+    # 3. DATA EDITOR (The "Fix" Section)
     # =====================================
     st.header(f"✏️ Data Editor – {selected_sheet}")
     
-    # Audit: Add a Status column for nulls
+    # Create audit view
     audit_df = df.copy()
     audit_df.insert(0, "Status", audit_df.apply(lambda r: "🚨 MISSING" if r[skills].isnull().any() else "✅ OK", axis=1))
     
     show_nulls = st.checkbox("🔍 Filter: Show only missing data")
     display_df = audit_df[audit_df["Status"] == "🚨 MISSING"] if show_nulls else audit_df
 
-    # The Editor
-    edited_df = st.data_editor(display_df, num_rows="dynamic", use_container_width=True, key=f"editor_{selected_sheet}")
+    # Render the editor
+    edited_df = st.data_editor(display_df, num_rows="dynamic", use_container_width=True, key=f"editor_{state_key}")
 
     col_save1, col_save2 = st.columns(2)
     with col_save1:
-        if st.button("💾 Apply Edits & Update Charts"):
-            # Update the session state by dropping the Status column
-            updated_data = edited_df.drop(columns=["Status"])
+        if st.button("💾 Apply Edits & Update Dashboard"):
+            # Strip status and update the state
+            final_edits = edited_df.drop(columns=["Status"])
             if show_nulls:
-                st.session_state[f"df_{selected_sheet}"].update(updated_data)
+                st.session_state[state_key].update(final_edits)
             else:
-                st.session_state[f"df_{selected_sheet}"] = updated_data
+                st.session_state[state_key] = final_edits
+            st.success("Reflected changes to Metrics and Charts!")
             st.rerun()
 
     with col_save2:
         if st.button("📂 Overwrite Original Excel File"):
             try:
-                # This works locally. if running on web, it will fail (use Download instead)
+                # Note: This only works if running locally and file is not open in Excel
                 with pd.ExcelWriter(uploaded_file.name, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-                    st.session_state[f"df_{selected_sheet}"].to_excel(writer, sheet_name=selected_sheet, index=False)
-                st.success("Successfully overwrote local file!")
-            except:
-                st.error("Cannot overwrite local file (is it open in Excel?)")
+                    st.session_state[state_key].to_excel(writer, sheet_name=selected_sheet, index=False)
+                st.success("Original Excel file updated!")
+            except Exception as e:
+                st.error("Cannot overwrite local file. Please ensure it is closed and you are running locally.")
 
     # =========================
     # Dashboard
