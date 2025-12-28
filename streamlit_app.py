@@ -31,50 +31,30 @@ def add_custom_style(logo_path):
     .stApp {{ background-color: #FFDE59; }}
     [data-testid="stSidebar"] {{ background-color: #6A1B9A !important; }}
 
-    /* 2. Style ALL Buttons to Radish Red */
-    div.stButton > button {{
+    /* Change all buttons to Radish Red */
+    div.stButton > button, div.stDownloadButton > button {{
         background-color: #D0312D !important;
         color: white !important;
-        border-radius: 8px;
-        width: 100%;
-        border: none;
-        font-weight: bold;
+        border: none !important;
+        border-radius: 8px !important;
+        transition: 0.3s;
     }}
     
-    /* 3. Style Checkboxes to Radish Red */
-    /* Target the checkmark box */
-    [data-testid="stCheckbox"] [data-testid="stWidgetLabel"] p {{
-        color: black; /* Text next to checkbox */
-        font-weight: 500;
+    /* Hover effect for buttons */
+    div.stButton > button:hover, div.stDownloadButton > button:hover {{
+        background-color: #A02623 !important;
+        transform: scale(1.02);
     }}
-    div[data-testid="stCheckbox"]  span[role="checkbox"] {{
+
+    /* Radish Red Checkboxes */
+    input[type="checkbox"]:checked + div {{
         background-color: #D0312D !important;
         border-color: #D0312D !important;
     }}
-
-    /* 4. Force Altair Containers to be transparent */
+    
+    /* Transparent Chart Containers */
     .vega-embed {{
         background-color: transparent !important;
-        border: none !important;
-    }}
-
-    /* 5. Sidebar Text Visibility */
-    [data-testid="stSidebar"] * {{
-        color: white !important;
-    }}
-    
-    /* 6. Top Right Logo Overlay */
-    .stApp::before {{
-        content: "";
-        position: fixed;
-        top: 10px;
-        right: 20px;
-        width: 100px;
-        height: 100px;
-        background-image: url("data:image/png;base64,{encoded}");
-        background-size: contain;
-        background-repeat: no-repeat;
-        z-index: 999;
     }}
     </style>
     """,
