@@ -335,7 +335,7 @@ if uploaded_file:
                     # Position: x=10, y=8 | Width: 33 (adjust as needed)
                     # Ensure 'logo.png' exists in your root folder
                     try:
-                        pdf.image("logo.png", x=10, y=8, w=33)
+                        pdf.image("logo.png", x=100, y=8, w=33)
                     except:
                         # Fallback if logo is missing to prevent crash
                         pdf.set_font("Arial", "I", 8)
