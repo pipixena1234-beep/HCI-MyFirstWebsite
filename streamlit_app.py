@@ -167,59 +167,43 @@ if uploaded_file:
     # =========================
     st.header(f"✏️ Data Review & Editor – {selected_sheet}")
     
-    # 1. IDENTIFY THE GAPS
-    # We create a temporary column just for visual warning
-    df_audit = df.copy()
-    df_audit["Status"] = df_audit.apply(
-        lambda row: "🚨 MISSING DATA" if row.isnull().any() else "✅ OK", axis=1
-    )
+    # 1. Define the styling function
+    def style_missing(df_to_style):
+        # This creates a CSS map: red background for nulls, white for data
+        return df_to_style.style.map(
+            lambda x: 'background-color: #ff4b4b; color: white; font-weight: bold' if pd.isna(x) or str(x).strip() == "" else ''
+        )
     
-    # Move Status to the front for visibility
-    cols = ["Status"] + [c for c in df_audit.columns if c != "Status"]
-    df_audit = df_audit[cols]
-    
-    # 2. AUDIT CHECKLIST (The "Check Button")
+    # 2. Null Check Checkbox
     total_nulls = df.isnull().sum().sum()
-    if total_nulls > 0:
-        st.error(f"⚠️ Action Required: {total_nulls} empty cells detected.")
-        
-        # Show a small checklist of exactly where the problems are
-        with st.expander("📍 View Checklist of Missing Data"):
-            null_rows = df_audit[df_audit["Status"] == "🚨 MISSING DATA"]
-            st.write(null_rows[["Student Name", "Term"]])
-    else:
-        st.success("✅ All data is complete!")
+    show_nulls_only = st.checkbox(f"🔍 Focus on missing data ({total_nulls} found)")
     
-    # 3. THE EDITOR (The "Instant Edit")
-    show_nulls_only = st.checkbox("🔍 Filter: Only show rows with 🚨")
-    
+    # 3. Prepare the display
     if show_nulls_only:
-        display_df = df_audit[df_audit["Status"] == "🚨 MISSING DATA"]
+        # Filter only rows with at least one NaN
+        display_df = df[df.isnull().any(axis=1)]
     else:
-        display_df = df_audit
+        display_df = df
     
-    st.info("💡 Fill in the empty cells. Once filled, the 🚨 status will change to ✅ after you click out.")
-    
-    # Use st.data_editor - we use the 'Status' column as a visual marker
-    edited_df = st.data_editor(
-        display_df,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="correction_editor"
-    )
-    
-    # 4. SYNC BACK (Remove the Status column before saving)
-    if st.button("💾 Commit & Update All Charts"):
-        # Clean the audit column before saving back to master df
-        final_df = edited_df.drop(columns=["Status"])
+    # 4. Display the EDITOR with STYLING
+    if not display_df.empty:
+        st.info("🟥 Red cells indicate missing data. Please enter values to fix them.")
         
+        # Passing the .style directly to the editor
+        edited_df = st.data_editor(
+            style_missing(display_df), 
+            num_rows="dynamic",
+            use_container_width=True,
+            key="editor_v2"
+        )
+    
+        # 5. Sync back to the master dataframe
         if show_nulls_only:
-            df.update(final_df)
+            df.update(edited_df)
         else:
-            df = final_df
-        
-        st.success("Changes committed! Metrics and Charts are now updated.")
-        st.rerun()
+            df = edited_df
+    else:
+        st.success("✨ Everything looks perfect! No missing values found.")
 
     # =========================
     # Dashboard
