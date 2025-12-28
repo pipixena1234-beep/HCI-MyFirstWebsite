@@ -197,12 +197,6 @@ if uploaded_file:
                 st.success("Successfully overwrote local file!")
             except:
                 st.error("Cannot overwrite local file (is it open in Excel?)")
-    
-    # =====================================
-    # 5. IMPORTANT: Update the 'df' variable
-    # =====================================
-    # All charts below this line will now use the EDITED data
-    df = st.session_state.master_df
 
     # =========================
     # Dashboard
