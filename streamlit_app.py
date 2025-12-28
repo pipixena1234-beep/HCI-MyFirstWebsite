@@ -13,6 +13,52 @@ from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
 import openpyxl
 from openpyxl.styles import Font
+import base64
+
+def add_custom_style(logo_path):
+    # Read the logo file and encode it to base64
+    with open(logo_path, "rb") as f:
+        data = f.read()
+        encoded = base64.b64encode(data).decode()
+
+    st.markdown(
+        f"""
+        <style>
+        /* 1. Change the main background and sidebar to yellow */
+        .stApp, [data-testid="stSidebar"] {{
+            background-color: #FFDE59; /* A soft yellow color */
+        }}
+
+        /* 2. Inject the logo into the top right corner */
+        .stApp::before {{
+            content: "";
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 120px;  /* Adjust width as needed */
+            height: 120px; /* Adjust height as needed */
+            background-image: url("data:image/png;base64,{encoded}");
+            background-size: contain;
+            background-repeat: no-repeat;
+            z-index: 999;
+            pointer-events: none;
+        }}
+        
+        /* Optional: Adjust header transparency to match background */
+        header {{
+            background-color: rgba(0,0,0,0) !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+# Call the function (make sure 'logo.png' is in your folder)
+try:
+    add_custom_style("logo.png")
+except FileNotFoundError:
+    st.error("Logo file not found. Please ensure 'logo.png' is in the root directory.")
+    
 
 # GLOBAL CONFIGURATION (Fixes NameErrors)
 month_order = ["Jan", "Feb", "March", "Apr", "May", "June", "July", "August", "Sept", "Oct", "Nov", "Dec"]
