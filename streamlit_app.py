@@ -167,36 +167,43 @@ if uploaded_file:
     # =========================
     st.header(f"✏️ Data Review & Editor – {selected_sheet}")
     
-    # 1. Logic to highlight nulls in Red (Background)
-    def highlight_nulls(val):
-        return 'background-color: #ffcccc; color: red;' if pd.isna(val) or val == "" else ''
+    # 1. Define the styling function
+    def style_missing(df_to_style):
+        # This creates a CSS map: red background for nulls, white for data
+        return df_to_style.style.map(
+            lambda x: 'background-color: #ff4b4b; color: white; font-weight: bold' if pd.isna(x) or str(x).strip() == "" else ''
+        )
     
-    # 2. Filter logic
+    # 2. Null Check Checkbox
     total_nulls = df.isnull().sum().sum()
-    show_nulls_only = st.checkbox(f"🔍 Show only rows with missing data ({total_nulls} found)")
+    show_nulls_only = st.checkbox(f"🔍 Focus on missing data ({total_nulls} found)")
     
-    display_df = df.copy()
+    # 3. Prepare the display
     if show_nulls_only:
+        # Filter only rows with at least one NaN
         display_df = df[df.isnull().any(axis=1)]
-    
-    # 3. Apply the Red Styling
-    styled_df = display_df.style.applymap(highlight_nulls)
-    
-    # 4. Display & Edit
-    st.write("### 🟥 Red cells indicate missing data")
-    # We use st.data_editor on the display_df, but use the styled_df for visual reference if needed
-    edited_df = st.data_editor(
-        display_df.style.applymap(highlight_nulls), # This highlights nulls in the editor!
-        num_rows="dynamic",
-        use_container_width=True,
-        key="editor"
-    )
-    
-    # 5. Sync edits back
-    if show_nulls_only:
-        df.update(edited_df)
     else:
-        df = edited_df
+        display_df = df
+    
+    # 4. Display the EDITOR with STYLING
+    if not display_df.empty:
+        st.info("🟥 Red cells indicate missing data. Please enter values to fix them.")
+        
+        # Passing the .style directly to the editor
+        edited_df = st.data_editor(
+            style_missing(display_df), 
+            num_rows="dynamic",
+            use_container_width=True,
+            key="editor_v2"
+        )
+    
+        # 5. Sync back to the master dataframe
+        if show_nulls_only:
+            df.update(edited_df)
+        else:
+            df = edited_df
+    else:
+        st.success("✨ Everything looks perfect! No missing values found.")
 
     # =========================
     # Dashboard
