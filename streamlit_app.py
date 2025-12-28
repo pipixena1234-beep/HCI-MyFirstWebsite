@@ -384,14 +384,29 @@ if uploaded_file:
                 growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(
                     height=450,
                     background=theme_bg  # Matches your app color
-                ).configure_legend(
-                labelColor='black',
-                titleColor='black',
-                labelFontSize=12,
-                labelFontWeight='bold',
-                titleFontWeight='bold'
-                ).configure_view(strokeOpacity=0) # Removes the outer border box
-                
+                    ).configure_axis(
+                    # Styling for the Titles (Score, Academic Term, Growth %)
+                    titleColor='black',
+                    titleFontSize=14,
+                    titleFontWeight='bold',
+                    
+                    # Styling for the Labels (Jan, Feb, 0, 20, 40...)
+                    labelColor='black',
+                    labelFontSize=12,
+                    labelFontWeight='bold',
+                    
+                    # Optional: Make the axis lines themselves black instead of grey
+                    domainColor='black',
+                    tickColor='black'
+                    ).configure_legend(
+                        titleColor='black',
+                        labelColor='black',
+                        labelFontWeight='bold',
+                        titleFontWeight='bold'
+                    ).configure_view(
+                        strokeOpacity=0
+                    )
+                    
                 st.altair_chart(growth_chart, use_container_width=True)
             else:
                 st.warning("No data available for this selection.")
