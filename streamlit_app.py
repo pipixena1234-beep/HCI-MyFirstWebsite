@@ -326,7 +326,7 @@ if uploaded_file:
         if st.button("📦 Generate Student PDF ZIP"):
             z_buf = BytesIO()
             with zipfile.ZipFile(z_buf, "w") as zf:
-                for _, r in df.iterrows():
+                for _, row in df.iterrows():
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
