@@ -159,7 +159,7 @@ target_str = f"{date_pick.strftime('%Y-%m-%d')} {time_pick.strftime('%H:%M')}"
 if st.sidebar.button("Update GitHub Schedule"):
     with st.spinner("Pushing..."):
         status = push_schedule_to_github(target_str)
-        if status in [200, 201]: st.sidebar.success("✅ GitHub updated to {time_pick}!")
+        if status in [200, 201]: st.sidebar.success(f"✅ GitHub updated to {time_pick}!")
         else: st.sidebar.error(f"❌ Error: {status}")
 
 # =====================================
