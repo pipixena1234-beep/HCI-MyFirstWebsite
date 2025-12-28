@@ -492,8 +492,10 @@ if uploaded_file:
                             pdf.cell(0, 10, f"Progress Report ({selected_sheet}_{term_clean})", ln=True)
                             pdf.set_font("Arial", "", 12)
                             pdf.cell(0, 8, f"Student: {student_name}", ln=True)
+                            pdf.cell(0, 5, "-"*30, ln=True) # Divider line
                             for s in skills:
                                 pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
+                            pdf.cell(0, 5, "-"*30, ln=True)
                             pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
                             pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
                             pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
