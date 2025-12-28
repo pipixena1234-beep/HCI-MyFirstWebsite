@@ -486,7 +486,7 @@ if uploaded_file:
     # 8. Report Export & Google Drive
     # =====================================
     st.divider()
-    col_zip, col_drive = st.columns(2)
+    col_drive, col_zip = st.columns(2)
     
     with col_zip:
         if st.button("📦 Generate Student PDF ZIP"):
