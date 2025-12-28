@@ -331,6 +331,18 @@ if uploaded_file:
                     pdf = FPDF()
                     pdf.add_page()
                     
+                    # --- 1. ADD LOGO ---
+                    # Position: x=10, y=8 | Width: 33 (adjust as needed)
+                    # Ensure 'logo.png' exists in your root folder
+                    try:
+                        pdf.image("logo.png", x=10, y=8, w=33)
+                    except:
+                        # Fallback if logo is missing to prevent crash
+                        pdf.set_font("Arial", "I", 8)
+                        pdf.cell(0, 5, "[School Logo Placeholder]", ln=True)
+                    
+                    # Move cursor down so text doesn't overlap logo
+                    pdf.ln(20)
                     # Header
                     pdf.set_font("Arial", "B", 16)
                     # Use 'r' here to match your loop variable
