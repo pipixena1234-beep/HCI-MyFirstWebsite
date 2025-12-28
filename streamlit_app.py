@@ -174,39 +174,37 @@ if uploaded_file:
     # =========================
     st.header(f"✏️ Data Review & Editor – {selected_sheet}")
     
-    # 1. Check for Nulls
-    null_count = df.isnull().sum().sum()
-    if null_count > 0:
-        st.warning(f"⚠️ Found {null_count} missing values. Please fill them in the table below.")
-    else:
-        st.success("✅ No missing values detected.")
+    # 1. Count total nulls
+    total_nulls = df.isnull().sum().sum()
     
-    # 2. Instant Editor
-    # This allows you to edit the data directly in the browser
+    # 2. Create the Check Button/Toggle
+    show_nulls_only = st.checkbox(f"🔍 Show only rows with missing data ({total_nulls} found)")
+    
+    # 3. Filter the dataframe based on the button
+    if show_nulls_only:
+        # This filters for rows where ANY value in your skill columns is null
+        display_df = df[df[skills].isnull().any(axis=1)]
+        if display_df.empty:
+            st.success("✨ No missing values found in the skill columns!")
+            display_df = df # Fallback to show all if none found
+    else:
+        display_df = df
+    
+    # 4. The Instant Editor (using the filtered display_df)
+    st.info("💡 You can edit cells directly below. Changes will reflect in your charts and reports.")
     edited_df = st.data_editor(
-        df, 
-        num_rows="dynamic", # Allows you to add/delete rows if needed
+        display_df, 
+        num_rows="dynamic",
         use_container_width=True,
         key="editor"
     )
     
-    # 3. Save and Update Logic
-    if st.button("💾 Save Changes to Original Excel"):
-        try:
-            # We need to write the changes back to the Excel file
-            # Note: If running on a local machine, this updates the file. 
-            # If on Streamlit Cloud, it saves to the temporary session storage.
-            with pd.ExcelWriter(uploaded_file.name, engine='openpyxl') as writer:
-                edited_df.to_excel(writer, sheet_name=selected_sheet, index=False)
-            
-            st.success("✅ Changes saved! The data used for reports is now updated.")
-            
-            # Sync the main dataframe with the edits
-            df = edited_df
-        except Exception as e:
-            st.error(f"Could not save to file: {e}. (Note: Saving directly to the source file requires local write permissions.)")
-    
-    st.divider()
+    # 5. Sync edits back to the main dataframe
+    # If you edited the filtered view, we need to update the main 'df'
+    if show_nulls_only:
+        df.update(edited_df)
+    else:
+        df = edited_df
 
     # =========================
     # High-Level Metrics
