@@ -14,6 +14,9 @@ from google.oauth2 import service_account
 import openpyxl
 from openpyxl.styles import Font
 
+# 1. MOVE THIS TO THE TOP (Right after imports)
+month_order = ["Jan", "Feb", "March", "Apr", "May", "June", "July", "August", "Sept", "Oct", "Nov", "Dec"]
+
 # =====================================
 # 1. Page Configuration
 # =====================================
@@ -129,50 +132,60 @@ if uploaded_file:
             st.success("Changes Saved to Session!")
             st.rerun()
 
-    def save_to_stacked_format(df_to_save):
+    # 2. UPDATED FUNCTION
+    def save_to_stacked_format(df_to_save, sheet_name, skill_cols):
         """Reconstructs the original Excel layout with Terms and dotted lines."""
         output = BytesIO()
-        # Create a new workbook and sheet
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = selected_sheet
+        ws.title = sheet_name
         
         current_row = 1
-        terms = sorted(df_to_save["Term"].unique(), key=lambda x: month_order.index(x) if x in month_order else 0)
+        
+        # Sort terms using the global month_order
+        terms = sorted(
+            df_to_save["Term"].unique(), 
+            key=lambda x: month_order.index(x) if x in month_order else 99
+        )
         
         for term in terms:
-            # 1. Write Term Header (e.g., Term: Jan)
+            # Write Term Header
             ws.cell(row=current_row, column=1, value=f"Term: {term}").font = Font(bold=True)
             current_row += 1
             
-            # 2. Write Dotted Line
+            # Write Dotted Line
             ws.cell(row=current_row, column=1, value="--------------------------")
             current_row += 1
             
-            # 3. Write Table Headers
-            headers = ["Student Name"] + skills
+            # Write Table Headers
+            headers = ["Student Name"] + skill_cols
             for col_num, header in enumerate(headers, 1):
                 ws.cell(row=current_row, column=col_num, value=header).font = Font(bold=True)
             current_row += 1
             
-            # 4. Write Student Data for this term
+            # Write Student Data
             term_data = df_to_save[df_to_save["Term"] == term]
             for _, row in term_data.iterrows():
                 ws.cell(row=current_row, column=1, value=row["Student Name"])
-                for col_num, skill in enumerate(skills, 2):
+                for col_num, skill in enumerate(skill_cols, 2):
+                    # We use .get() or index to ensure we match the right column
                     ws.cell(row=current_row, column=col_num, value=row[skill])
                 current_row += 1
             
-            # 5. Add space between tables (one empty row)
-            current_row += 1
+            # Add space between tables
+            current_row += 2
             
         wb.save(output)
         return output.getvalue()
     
-    # --- In your UI Section ---
+    # 3. UPDATED CALL (Inside your UI)
     with col_dl:
-        # Use the new reconstruction function
-        stacked_excel_data = save_to_stacked_format(st.session_state[state_key])
+        # Pass the variables explicitly to avoid NameErrors
+        stacked_excel_data = save_to_stacked_format(
+            st.session_state[state_key], 
+            selected_sheet, 
+            skills
+        )
         
         st.download_button(
             label="📥 Download Corrected Excel (Original Format)",
@@ -220,7 +233,6 @@ if uploaded_file:
         # 7. Growth Chart (Dual Axis)
         # =====================================
         st.header("📊 Performance & Growth Trends")
-        month_order = ["Jan", "Feb", "March", "Apr", "May", "June", "July", "August", "Sept", "Oct", "Nov", "Dec"]
         
         base_chart = alt.Chart(df_final).encode(x=alt.X('Term:N', sort=month_order))
         
