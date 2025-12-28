@@ -167,13 +167,18 @@ def extract_and_flatten(df_raw):
 # =====================================
 # 4. File Upload & State Management
 # =====================================
-with st.form("file_upload_form"):
+# Wrap in a form to prevent "Axios Network Errors" on mobile
+with st.form("my_upload_form", clear_on_submit=False):
     uploaded_file = st.file_uploader("Upload Excel", type=["xlsx"])
-    submit_button = st.form_submit_button("Process File")
+    submit_button = st.form_submit_button("Confirm Upload")
 
 if submit_button and uploaded_file is not None:
-    df = pd.read_excel(uploaded_file)
-    st.success("File successfully received via PUT request!")
+    try:
+        df = pd.read_excel(uploaded_file)
+        st.success("✅ Success! File loaded.")
+        # Your analysis logic goes here...
+    except Exception as e:
+        st.error(f"Error: {e}")
     
 # uploaded_file = st.file_uploader("Upload Excel (.xlsx)", type=["xlsx"])
 
