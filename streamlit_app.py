@@ -466,14 +466,14 @@ if uploaded_file:
                 # Combining and applying the Yellow Background
                 pie_chart = (pie + text).properties(
                     height=350,
-                    background=theme_bg  # Matches your app color
+                    background='#ffbc00'  # Matches your app color
                 ).configure_legend(
                 labelColor='black',
                 titleColor='black',
                 labelFontSize=12,
                 labelFontWeight='bold',
                 titleFontWeight='bold'
-                ).configure_view(strokeOpacity=0)
+                )  #.configure_view(strokeOpacity=0)
         
                 st.altair_chart(pie_chart, use_container_width=True)
         
