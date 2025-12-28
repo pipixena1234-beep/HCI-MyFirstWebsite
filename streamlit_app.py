@@ -85,7 +85,7 @@ def add_custom_style(logo_path):
 
         /* 7. Clean Transparent Containers for Charts */
         .vega-embed {{
-            background-color: #ffbc00 !important;
+            background-color: transparent !important;
         }}
         /* Ensure Sidebar text remains readable (if black is too dark on purple) */
         /* If you want sidebar text white, change this to white */
@@ -409,7 +409,7 @@ if uploaded_file:
                 # Layering and applying the Yellow Background
                 growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(
                     height=450,
-                    background='#ffbc00'  # Matches your app color
+                    background=theme_bg  # Matches your app color
                     ).configure_axis(
                     # Styling for the Titles (Score, Academic Term, Growth %)
                     titleColor='black',
@@ -464,7 +464,7 @@ if uploaded_file:
                 # Combining and applying the Yellow Background
                 pie_chart = (pie + text).properties(
                     height=350,
-                    background='#ffbc00'  # Matches your app color
+                    background=theme_bg  # Matches your app color
                 ).configure_legend(
                 labelColor='black',
                 titleColor='black',
