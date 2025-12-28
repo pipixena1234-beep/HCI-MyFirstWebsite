@@ -167,7 +167,6 @@ if uploaded_file:
     # Dashboard
     # =========================
     st.header(f"📘 Dashboard – {selected_sheet}")
-    st.dataframe(df)
     
     # =========================
     # Data Quality & Instant Edit
