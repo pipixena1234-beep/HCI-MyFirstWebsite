@@ -92,28 +92,6 @@ def add_custom_style(logo_path):
         [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {{
             color: #000000 !important; 
         }}
-
-       /* 4. FORCE TOP SKILL (Success) Background - Light Green */
-        div[data-testid="stNotification"]:has(svg[title="Success"]) {{
-            background-color: #90EE90 !important;
-            color: black !important;
-            border: 2px solid black !important;
-            border-radius: 10px !important;
-        }}
-        
-        /* 5. FORCE FOCUS AREA (Warning) Background - Radish Red */
-        div[data-testid="stNotification"]:has(svg[title="Warning"]) {{
-            background-color: #D0312D !important;
-            color: white !important;
-            border: 2px solid black !important;
-            border-radius: 10px !important;
-        }}
-        
-        /* Fix text color inside Focus Area specifically for white contrast */
-        div[data-testid="stNotification"]:has(svg[title="Warning"]) p,
-        div[data-testid="stNotification"]:has(svg[title="Warning"]) div {{
-            color: white !important;
-        }}
         </style>
         """,
         unsafe_allow_html=True
@@ -488,7 +466,7 @@ if uploaded_file:
                     stat_col1, stat_col2 = st.columns(2)
                     with stat_col1:
                         st.markdown(f'''
-                            <div style="background-color:#90EE90; padding:15px; border-radius:10px; border:2px solid black;">
+                            <div style="background-color:#ffbc00; padding:15px; border-radius:10px; border:2px solid black;">
                                 <p style="margin:0; font-size:16px;">🌟 <b>Top Skill</b></p>
                                 <p style="margin:0; font-size:20px;">{avg_skills.index[-1]}</p>
                                 <p style="margin:0; font-size:14px;">Avg: {avg_skills.max():.1f}</p>
@@ -496,7 +474,7 @@ if uploaded_file:
                         ''', unsafe_allow_html=True)
                     with stat_col2:
                         st.markdown(f'''
-                            <div style="background-color:#D0312D; padding:15px; border-radius:10px; border:2px solid black; color:white;">
+                            <div style="background-color:#ffbc00; padding:15px; border-radius:10px; border:2px solid black; color:white;">
                                 <p style="margin:0; font-size:16px; color:white;">⚠️ <b>Focus Area</b></p>
                                 <p style="margin:0; font-size:20px; color:white;">{avg_skills.index[0]}</p>
                                 <p style="margin:0; font-size:14px; color:white;">Avg: {avg_skills.min():.1f}</p>
