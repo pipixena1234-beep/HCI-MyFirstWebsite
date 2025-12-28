@@ -168,6 +168,45 @@ if uploaded_file:
     # =========================
     st.header(f"📘 Dashboard – {selected_sheet}")
     st.dataframe(df)
+    
+    # =========================
+    # Data Quality & Instant Edit
+    # =========================
+    st.header(f"✏️ Data Review & Editor – {selected_sheet}")
+    
+    # 1. Check for Nulls
+    null_count = df.isnull().sum().sum()
+    if null_count > 0:
+        st.warning(f"⚠️ Found {null_count} missing values. Please fill them in the table below.")
+    else:
+        st.success("✅ No missing values detected.")
+    
+    # 2. Instant Editor
+    # This allows you to edit the data directly in the browser
+    edited_df = st.data_editor(
+        df, 
+        num_rows="dynamic", # Allows you to add/delete rows if needed
+        use_container_width=True,
+        key="editor"
+    )
+    
+    # 3. Save and Update Logic
+    if st.button("💾 Save Changes to Original Excel"):
+        try:
+            # We need to write the changes back to the Excel file
+            # Note: If running on a local machine, this updates the file. 
+            # If on Streamlit Cloud, it saves to the temporary session storage.
+            with pd.ExcelWriter(uploaded_file.name, engine='openpyxl') as writer:
+                edited_df.to_excel(writer, sheet_name=selected_sheet, index=False)
+            
+            st.success("✅ Changes saved! The data used for reports is now updated.")
+            
+            # Sync the main dataframe with the edits
+            df = edited_df
+        except Exception as e:
+            st.error(f"Could not save to file: {e}. (Note: Saving directly to the source file requires local write permissions.)")
+    
+    st.divider()
 
     # =========================
     # High-Level Metrics
