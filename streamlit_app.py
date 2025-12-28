@@ -343,7 +343,7 @@ if uploaded_file:
             st.download_button("⬇️ Download ZIP", z_buf.getvalue(), "student_reports.zip")
 
     with col_drive:
-        f_id = st.text_input("G-Drive Folder ID", "0ALncbMfl-gjdUk9PVA")
+        folder_id_input = st.text_input("G-Drive Folder ID", "0ALncbMfl-gjdUk9PVA")
         if st.button("🚀 Upload Current View to Drive"):
             st.info("Initiating Google Drive Upload...")
             try:
