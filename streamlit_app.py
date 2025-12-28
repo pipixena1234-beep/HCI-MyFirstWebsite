@@ -150,43 +150,55 @@ if uploaded_file:
     df["Remarks"] = df["Average"].apply(
         lambda x: "Excellent work!" if x >= 80 else "Good effort!" if x >= 70 else "Needs improvement"
     )
-
     # =====================================
-    # 3. DATA EDITOR (The "Fix" Section)
+    # 3. DATA EDITOR & DOWNLOAD
     # =====================================
     st.header(f"✏️ Data Editor – {selected_sheet}")
     
-    # Create audit view
+    # Audit View (Identifies missing data)
     audit_df = df.copy()
     audit_df.insert(0, "Status", audit_df.apply(lambda r: "🚨 MISSING" if r[skills].isnull().any() else "✅ OK", axis=1))
     
     show_nulls = st.checkbox("🔍 Filter: Show only missing data")
     display_df = audit_df[audit_df["Status"] == "🚨 MISSING"] if show_nulls else audit_df
 
-    # Render the editor
-    edited_df = st.data_editor(display_df, num_rows="dynamic", use_container_width=True, key=f"editor_{state_key}")
+    # The Editor
+    edited_df = st.data_editor(
+        display_df, 
+        num_rows="dynamic", 
+        use_container_width=True, 
+        key=f"editor_{state_key}"
+    )
 
-    col_save1, col_save2 = st.columns(2)
-    with col_save1:
-        if st.button("💾 Apply Edits & Update Dashboard"):
-            # Strip status and update the state
+    col_save, col_download = st.columns(2)
+    
+    with col_save:
+        if st.button("🔄 Apply Edits to Dashboard", use_container_width=True):
+            # Strip status column and update the session memory
             final_edits = edited_df.drop(columns=["Status"])
             if show_nulls:
                 st.session_state[state_key].update(final_edits)
             else:
                 st.session_state[state_key] = final_edits
-            st.success("Reflected changes to Metrics and Charts!")
+            
+            st.success("Dashboard Updated! Scrolling up will show new Metrics.")
             st.rerun()
 
-    with col_save2:
-        if st.button("📂 Overwrite Original Excel File"):
-            try:
-                # Note: This only works if running locally and file is not open in Excel
-                with pd.ExcelWriter(uploaded_file.name, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-                    st.session_state[state_key].to_excel(writer, sheet_name=selected_sheet, index=False)
-                st.success("Original Excel file updated!")
-            except Exception as e:
-                st.error("Cannot overwrite local file. Please ensure it is closed and you are running locally.")
+    with col_download:
+        # Prepare the Excel file in memory for download
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            # We save the CURRENT state of the data from session state
+            st.session_state[state_key].to_excel(writer, sheet_name=selected_sheet, index=False)
+        
+        st.download_button(
+            label="📥 Download Fixed Excel File",
+            data=buffer.getvalue(),
+            file_name=f"Fixed_Report_{selected_sheet}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            help="Click to save a copy of your edited data to your computer."
+        )
 
     # =========================
     # Dashboard
