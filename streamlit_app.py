@@ -327,17 +327,14 @@ if uploaded_file:
         col_chart1, col_chart2 = st.columns(2)
         
         # --- Left Column: Performance & Growth (Fused with Search) ---
-        # --- Left Column: Performance & Growth ---
         with col_chart1:
             st.subheader("Performance & Growth Trends")
             
             if not df_final_active.empty:
-                # 1. Define the base
                 base = alt.Chart(df_final_active).encode(
                     x=alt.X('Term:N', sort=month_order, title="Academic Term")
                 )
                 
-                # 2. Define the layers
                 bars = base.mark_bar(opacity=0.4).encode(
                     xOffset='Skill:N',
                     y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Score"),
@@ -349,17 +346,17 @@ if uploaded_file:
                     color='Skill:N'
                 )
                 
-                # 3. Layer them
-                layered_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
+                # COMBINE FIRST
+                layered = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
                 
-                # 4. APPLY CONFIGURATION HERE (Correct Way)
-                final_chart = layered_chart.configure_view(
-                    strokeOpacity=0
-                ).configure_background(
+                # CONFIGURE LAST
+                final_growth_chart = layered.configure_background(
                     fill='transparent'
+                ).configure_view(
+                    strokeOpacity=0
                 )
                 
-                st.altair_chart(final_chart, use_container_width=True)
+                st.altair_chart(final_growth_chart, use_container_width=True)
         
         # --- Right Column: Donut Chart & Statistics ---
         with col_chart2:
@@ -367,45 +364,26 @@ if uploaded_file:
             
             if not active_df.empty:
                 base_pie = alt.Chart(active_df).encode(
-                    theta=alt.Theta(field="Grade", aggregate="count", type="quantitative", stack=True),
-                    color=alt.Color(
-                        field="Grade", type="nominal", sort=grade_order,
-                        scale=alt.Scale(domain=grade_order, range=grade_colors),
-                        legend=alt.Legend(title="Grades", orient="right")
-                    )
+                    theta=alt.Theta(field="Grade", aggregate="count", type="quantitative"),
+                    color=alt.Color(field="Grade", type="nominal", sort=grade_order, scale=alt.Scale(domain=grade_order, range=grade_colors))
                 )
         
                 pie = base_pie.mark_arc(innerRadius=60, outerRadius=140)
+                
                 text = base_pie.mark_text(radius=100, size=14, fontWeight="bold", color="white").encode(
                     text=alt.Text('pct:Q', format='.0%')
                 ).transform_joinaggregate(total='count(*)').transform_calculate(pct='datum.count / datum.total').transform_filter(alt.datum.pct > 0.04)
         
-                # Making Background Transparent
-                # Inside col_chart2
-                chart_to_display = (pie + text).properties(
+                # COMBINE (pie + text) THEN CONFIGURE
+                final_pie_chart = (pie + text).properties(
                     height=350
-                ).configure_view(
-                    strokeOpacity=0
                 ).configure_background(
                     fill='transparent'
+                ).configure_view(
+                    strokeOpacity=0
                 )
-                st.altair_chart(chart_to_display, use_container_width=True)
-                
-                # Statistics
-                st.markdown("---")
-                st.markdown("### 💡 **Analysis Insights**")
-                avg_skills = active_df[skills].mean().sort_values()
-                
-                if not avg_skills.empty:
-                    stat_col1, stat_col2 = st.columns(2)
-                    with stat_col1:
-                        st.success("🌟 **Top Skill**")
-                        st.write(f"**{avg_skills.index[-1]}**")
-                        st.caption(f"Avg: {avg_skills.max():.1f}")
-                    with stat_col2:
-                        st.warning("⚠️ **Focus Area**")
-                        st.write(f"**{avg_skills.index[0]}**")
-                        st.caption(f"Avg: {avg_skills.min():.1f}")
+        
+                st.altair_chart(final_pie_chart, use_container_width=True)
 
         
 
