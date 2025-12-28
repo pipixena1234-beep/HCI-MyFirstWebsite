@@ -162,64 +162,46 @@ if uploaded_file:
                   "Good effort, keep improving!" if x >= 70 else
                   "Needs improvement"
     )    
+    # =====================================
+    # 1. Initialize Session State for Data
+    # =====================================
+    if 'master_df' not in st.session_state:
+        st.session_state.master_df = df.copy()
+    
     # =========================
-    # Data Quality & Instant Edit
+    # 2. Data Review & Editor
     # =========================
     st.header(f"✏️ Data Review & Editor – {selected_sheet}")
     
-    # 1. IDENTIFY THE GAPS
-    # We create a temporary column just for visual warning
-    df_audit = df.copy()
-    df_audit["Status"] = df_audit.apply(
-        lambda row: "🚨 MISSING DATA" if row.isnull().any() else "✅ OK", axis=1
-    )
+    # Search for nulls in the session state data
+    total_nulls = st.session_state.master_df[skills].isnull().sum().sum()
     
-    # Move Status to the front for visibility
-    cols = ["Status"] + [c for c in df_audit.columns if c != "Status"]
-    df_audit = df_audit[cols]
-    
-    # 2. AUDIT CHECKLIST (The "Check Button")
-    total_nulls = df.isnull().sum().sum()
     if total_nulls > 0:
-        st.error(f"⚠️ Action Required: {total_nulls} empty cells detected.")
-        
-        # Show a small checklist of exactly where the problems are
-        with st.expander("📍 View Checklist of Missing Data"):
-            null_rows = df_audit[df_audit["Status"] == "🚨 MISSING DATA"]
-            st.write(null_rows[["Student Name", "Term"]])
+        st.error(f"⚠️ {total_nulls} missing values detected in skill columns!")
     else:
-        st.success("✅ All data is complete!")
+        st.success("✅ Data is complete.")
     
-    # 3. THE EDITOR (The "Instant Edit")
-    show_nulls_only = st.checkbox("🔍 Filter: Only show rows with 🚨")
-    
-    if show_nulls_only:
-        display_df = df_audit[df_audit["Status"] == "🚨 MISSING DATA"]
-    else:
-        display_df = df_audit
-    
-    st.info("💡 Fill in the empty cells. Once filled, the 🚨 status will change to ✅ after you click out.")
-    
-    # Use st.data_editor - we use the 'Status' column as a visual marker
-    edited_df = st.data_editor(
-        display_df,
+    # 3. The Editor
+    # We point the editor to the Session State
+    edited_output = st.data_editor(
+        st.session_state.master_df,
         num_rows="dynamic",
         use_container_width=True,
-        key="correction_editor"
+        key="main_editor"
     )
     
-    # 4. SYNC BACK (Remove the Status column before saving)
-    if st.button("💾 Commit & Update All Charts"):
-        # Clean the audit column before saving back to master df
-        final_df = edited_df.drop(columns=["Status"])
-        
-        if show_nulls_only:
-            df.update(final_df)
-        else:
-            df = final_df
-        
-        st.success("Changes committed! Metrics and Charts are now updated.")
-        st.rerun()
+    # 4. THE SAVE LOGIC
+    # This button pushes the edits into the "Brain" (Session State)
+    if st.button("💾 Apply Edits to Dashboard"):
+        st.session_state.master_df = edited_output
+        st.success("Reflected changes to Charts and Metrics!")
+        st.rerun() 
+    
+    # =====================================
+    # 5. IMPORTANT: Update the 'df' variable
+    # =====================================
+    # All charts below this line will now use the EDITED data
+    df = st.session_state.master_df
 
     # =========================
     # Dashboard
