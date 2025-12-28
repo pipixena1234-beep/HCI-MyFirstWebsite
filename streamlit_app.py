@@ -234,37 +234,40 @@ if uploaded_file:
         m3.metric("🎯 Class Success Rate", f"{rate:.0f}%", "Grades A & B")
 
         # =====================================
-        # 6.5 STUDENT SEARCH FILTER
+        # 6.5 STUDENT SEARCH FILTER (FIXED JOIN)
         # =====================================
         st.divider()
         st.subheader("🔍 Individual Student Search")
         
-        # Create a list of unique student names
         student_names = sorted(df["Student Name"].dropna().unique().tolist())
         student_list = ["All Students"] + student_names
-        search_query = st.selectbox("Search for a student to see their specific progress:", student_list)
+        search_query = st.selectbox("Search for a student:", student_list)
         
-        # Filter data based on search
         if search_query != "All Students":
-            # Filter for the specific student
             active_df = df[df["Student Name"] == search_query].copy()
-            st.info(f"Showing analytics for **{search_query}**")
         else:
-            # Use the full class data
             active_df = df.copy()
         
-        # --- RECALCULATE GROWTH FOR ACTIVE SELECTION ---
-        # This ensures the line chart shows the growth for the specific student/class view
+        # --- DYNAMIC CALCULATION (Handles Missing Months) ---
         df_melted_active = active_df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='Score')
         df_final_active = df_melted_active.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
         
-        if len(selected_terms) > 0:
-            base_t = selected_terms[0]
-            df_base = df_final_active[df_final_active['Term'] == base_t][['Skill', 'Score']].rename(columns={'Score':'Base'})
-            df_final_active = pd.merge(df_final_active, df_base, on='Skill')
-            # Use LaTeX logic for growth formula context internally: (Score - Base) / Base
-            df_final_active['Growth'] = ((df_final_active['Score'] - df_final_active['Base']) / df_final_active['Base']) * 100
-        
+        if not df_final_active.empty:
+            # 1. Identify the earliest available month for the current selection
+            # (Instead of forcing 'Jan', we take the first month they actually appear in)
+            present_terms = [t for t in month_order if t in df_final_active['Term'].unique()]
+            
+            if present_terms:
+                base_t = present_terms[0] 
+                df_base = df_final_active[df_final_active['Term'] == base_t][['Skill', 'Score']].rename(columns={'Score':'Base'})
+                
+                # 2. Use 'how=left' to keep months like June/August even if Jan is missing
+                df_final_active = pd.merge(df_final_active, df_base, on='Skill', how='left')
+                
+                # 3. Calculate Growth (Handle division by zero/NaN)
+                df_final_active['Growth'] = ((df_final_active['Score'] - df_final_active['Base']) / df_final_active['Base']) * 100
+                df_final_active['Growth'] = df_final_active['Growth'].fillna(0) # First month will show 0% growth
+                
         # =====================================
         # 7, 8, & 9. SIDE-BY-SIDE ANALYTICS
         # =====================================
