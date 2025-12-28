@@ -34,6 +34,14 @@ def add_custom_style(logo_path):
         [data-testid="stSidebar"] {{ 
             background-color: #602b7b !important; 
         }}
+
+        /* Add this inside your <style> tag */
+        @media (max-width: 768px) {
+            [data-testid="stSidebar"] {
+                min-width: 100vw !important;
+                max-width: 100vw !important;
+            }
+        }
         
         /* 3. Inject Logo to Top Left of Sidebar */
         [data-testid="stSidebarContent"]::before {{
