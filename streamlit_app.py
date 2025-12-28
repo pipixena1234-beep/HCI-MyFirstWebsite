@@ -168,7 +168,7 @@ if uploaded_file:
     st.header(f"✏️ Data Editor – {selected_sheet}")
     
     # Audit: Add a Status column for nulls
-    audit_df = working_df.copy()
+    audit_df = df.copy()
     audit_df.insert(0, "Status", audit_df.apply(lambda r: "🚨 MISSING" if r[skills].isnull().any() else "✅ OK", axis=1))
     
     show_nulls = st.checkbox("🔍 Filter: Show only missing data")
