@@ -327,33 +327,39 @@ if uploaded_file:
         col_chart1, col_chart2 = st.columns(2)
         
         # --- Left Column: Performance & Growth (Fused with Search) ---
+        # --- Left Column: Performance & Growth ---
         with col_chart1:
             st.subheader("Performance & Growth Trends")
             
             if not df_final_active.empty:
-                base_chart = alt.Chart(df_final_active).encode(
+                # 1. Define the base
+                base = alt.Chart(df_final_active).encode(
                     x=alt.X('Term:N', sort=month_order, title="Academic Term")
                 )
                 
-                bars = base_chart.mark_bar(opacity=0.4).encode(
+                # 2. Define the layers
+                bars = base.mark_bar(opacity=0.4).encode(
                     xOffset='Skill:N',
                     y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Score"),
                     color=alt.Color('Skill:N', legend=alt.Legend(orient='bottom'))
                 )
                 
-                lines = base_chart.mark_line(size=3, point=True).encode(
+                lines = base.mark_line(size=3, point=True).encode(
                     y=alt.Y('Growth:Q', title="Growth %", axis=alt.Axis(format='+')),
-                    color='Skill:N',
-                    tooltip=['Term', 'Skill', alt.Tooltip('Score:Q', format='.1f'), alt.Tooltip('Growth:Q', format='.1f')]
+                    color='Skill:N'
                 )
                 
-                # Fusing and making Background Transparent
-                growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
+                # 3. Layer them
+                layered_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
                 
-                st.altair_chart(
-                    growth_chart.configure_view(strokeOpacity=0).configure_background(fill='transparent'), 
-                    use_container_width=True
+                # 4. APPLY CONFIGURATION HERE (Correct Way)
+                final_chart = layered_chart.configure_view(
+                    strokeOpacity=0
+                ).configure_background(
+                    fill='transparent'
                 )
+                
+                st.altair_chart(final_chart, use_container_width=True)
         
         # --- Right Column: Donut Chart & Statistics ---
         with col_chart2:
@@ -375,10 +381,15 @@ if uploaded_file:
                 ).transform_joinaggregate(total='count(*)').transform_calculate(pct='datum.count / datum.total').transform_filter(alt.datum.pct > 0.04)
         
                 # Making Background Transparent
-                st.altair_chart(
-                    (pie + text).properties(height=350).configure_view(strokeOpacity=0).configure_background(fill='transparent'), 
-                    use_container_width=True
+                # Inside col_chart2
+                chart_to_display = (pie + text).properties(
+                    height=350
+                ).configure_view(
+                    strokeOpacity=0
+                ).configure_background(
+                    fill='transparent'
                 )
+                st.altair_chart(chart_to_display, use_container_width=True)
                 
                 # Statistics
                 st.markdown("---")
