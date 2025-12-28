@@ -232,89 +232,87 @@ if uploaded_file:
         m3.metric("🎯 Class Success Rate", f"{rate:.0f}%", "Grades A & B")
 
         # =====================================
-        # 7, 8, & 9. Side-by-Side Analytics & Insights
+        # 6.5 STUDENT SEARCH FILTER
+        # =====================================
+        st.divider()
+        st.subheader("🔍 Individual Student Search")
+        
+        # Create a list of unique student names for the search box
+        student_list = ["All Students"] + sorted(df["Student Name"].unique().tolist())
+        search_query = st.selectbox("Search for a student to see their specific progress:", student_list)
+        
+        # Create a specialized dataframe for the charts based on the search
+        if search_query != "All Students":
+            chart_df = df[df["Student Name"] == search_query].copy()
+            st.info(f"Showing analytics for **{search_query}** across selected terms.")
+        else:
+            chart_df = df.copy()
+        
+        # Recalculate df_final for the Growth Chart based on the search/filter
+        df_melted_search = chart_df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='Score')
+        df_final_search = df_melted_search.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
+        
+        # Handle Growth Calculation for the search view
+        if len(selected_terms) > 0:
+            base_t = selected_terms[0]
+            df_base = df_final_search[df_final_search['Term'] == base_t][['Skill', 'Score']].rename(columns={'Score':'Base'})
+            df_final_search = pd.merge(df_final_search, df_base, on='Skill')
+            df_final_search['Growth'] = ((df_final_search['Score'] - df_final_search['Base']) / df_final_search['Base']) * 100
+        
+        # =====================================
+        # 7, 8, & 9. SIDE-BY-SIDE ANALYTICS (UPDATED)
         # =====================================
         st.header("📊 Subject Analytics & Insights")
         
-        # Row 1: Two main columns
         col_chart1, col_chart2 = st.columns(2)
         
-        # --- Left Column: Performance & Growth ---
         with col_chart1:
             st.subheader("Performance & Growth Trends")
-            month_order = ["Jan", "Feb", "March", "Apr", "May", "June", "July", "August", "Sept", "Oct", "Nov", "Dec"]
-            
-            base_chart = alt.Chart(df_final).encode(x=alt.X('Term:N', sort=month_order, title="Academic Term"))
-            
-            bars = base_chart.mark_bar(opacity=0.4).encode(
-                xOffset='Skill:N',
-                y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Average Score"),
-                color=alt.Color('Skill:N', legend=alt.Legend(orient='bottom'))
-            )
-            
-            lines = base_chart.mark_line(size=3, point=True).encode(
-                y=alt.Y('Growth:Q', title="Growth %", axis=alt.Axis(format='+')),
-                color='Skill:N',
-                tooltip=['Term', 'Skill', alt.Tooltip('Score:Q', format='.1f'), alt.Tooltip('Growth:Q', format='.1f')]
-            )
-            
-            growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
-            st.altair_chart(growth_chart, use_container_width=True)
-        
-        # --- Right Column: Donut Chart (Top) & Statistic Reading (Below) ---
-        with col_chart2:
-            # 2. Statistic Reading (Below Donut)
-            st.markdown("---")
-            st.markdown("### 💡 **Automated Class Analysis**")
-            
-            if not df.empty:
-                avg_skills = df[skills].mean().sort_values()
-                weakest_skill = avg_skills.index[0]
-                strongest_skill = avg_skills.index[-1]
+            if not df_final_search.empty:
+                # Use df_final_search instead of df_final
+                base_chart = alt.Chart(df_final_search).encode(x=alt.X('Term:N', sort=month_order, title="Academic Term"))
                 
-                # Using inner columns inside col_chart2 for a clean side-by-side metric look
-                stat_col1, stat_col2 = st.columns(2)
-                
-                with stat_col1:
-                    st.success(f"🌟 **Top Skill**")
-                    st.write(f"**{strongest_skill}**")
-                    st.caption(f"Avg: {avg_skills.max():.1f}")
-                    
-                with stat_col2:
-                    st.warning(f"⚠️ **Focus Area**")
-                    st.write(f"**{weakest_skill}**")
-                    st.caption(f"Avg: {avg_skills.min():.1f}")
-            
-            # 1. Donut Chart (Top)
-            st.subheader("Grade Distribution (%)")
-            
-            grade_order = ["A", "B", "C", "D", "F"]
-            grade_colors = ['#2ecc71', '#3498db', '#f1c40f', '#e67e22', '#e74c3c']
-            
-            base_pie = alt.Chart(df).encode(
-                theta=alt.Theta(field="Grade", aggregate="count", type="quantitative", stack=True),
-                color=alt.Color(
-                    field="Grade", 
-                    type="nominal", 
-                    sort=grade_order,
-                    scale=alt.Scale(domain=grade_order, range=grade_colors),
-                    legend=alt.Legend(title="Grades", orient="right")
+                bars = base_chart.mark_bar(opacity=0.4).encode(
+                    xOffset='Skill:N',
+                    y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Score"),
+                    color=alt.Color('Skill:N', legend=alt.Legend(orient='bottom'))
                 )
+                
+                lines = base_chart.mark_line(size=3, point=True).encode(
+                    y=alt.Y('Growth:Q', title="Growth %"),
+                    color='Skill:N',
+                    tooltip=['Term', 'Skill', 'Score', 'Growth']
+                )
+                
+                st.altair_chart(alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450), use_container_width=True)
+        
+        with col_chart2:
+            st.subheader("Grade Distribution (%)")
+            # Use chart_df instead of df
+            base_pie = alt.Chart(chart_df).encode(
+                theta=alt.Theta(field="Grade", aggregate="count", type="quantitative", stack=True),
+                color=alt.Color(field="Grade", type="nominal", sort=grade_order, scale=alt.Scale(domain=grade_order, range=grade_colors))
             )
-        
-            pie = base_pie.mark_arc(innerRadius=60, outerRadius=140)
-        
-            text = base_pie.mark_text(radius=100, size=14, fontWeight="bold", color="white").encode(
+            
+            pie = base_pie.mark_arc(innerRadius=70, outerRadius=140)
+            
+            text = base_pie.mark_text(radius=105, size=14, fontWeight="bold", color="white").encode(
                 text=alt.Text('pct:Q', format='.0%')
-            ).transform_joinaggregate(
-                total='count(*)'
-            ).transform_calculate(
-                pct='datum.count / datum.total'
-            ).transform_filter(
-                alt.datum.pct > 0.04 
-            )
+            ).transform_joinaggregate(total='count(*)').transform_calculate(pct='datum.count / datum.total').transform_filter(alt.datum.pct > 0.04)
         
             st.altair_chart((pie + text).properties(height=350), use_container_width=True)
+        
+            # Statistic Reading (Below Donut)
+            st.markdown("---")
+            st.markdown("### 💡 **Individual/Class Analysis**")
+            
+            avg_s = chart_df[skills].mean().sort_values()
+            with st.container():
+                s_col1, s_col2 = st.columns(2)
+                s_col1.success(f"🌟 **Top Skill:** {avg_s.index[-1]}")
+                s_col2.warning(f"⚠️ **Focus Area:** {avg_s.index[0]}")
+
+        
 
     # =====================================
     # 8. Report Export & Google Drive
