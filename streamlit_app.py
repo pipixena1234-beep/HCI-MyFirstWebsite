@@ -11,6 +11,8 @@ from datetime import datetime
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
+import openpyxl
+from openpyxl.styles import Font
 
 # =====================================
 # 1. Page Configuration
@@ -126,12 +128,59 @@ if uploaded_file:
             st.session_state[state_key].update(cleaned_edits)
             st.success("Changes Saved to Session!")
             st.rerun()
+
+    def save_to_stacked_format(df_to_save):
+        """Reconstructs the original Excel layout with Terms and dotted lines."""
+        output = BytesIO()
+        # Create a new workbook and sheet
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = selected_sheet
+        
+        current_row = 1
+        terms = sorted(df_to_save["Term"].unique(), key=lambda x: month_order.index(x) if x in month_order else 0)
+        
+        for term in terms:
+            # 1. Write Term Header (e.g., Term: Jan)
+            ws.cell(row=current_row, column=1, value=f"Term: {term}").font = Font(bold=True)
+            current_row += 1
+            
+            # 2. Write Dotted Line
+            ws.cell(row=current_row, column=1, value="--------------------------")
+            current_row += 1
+            
+            # 3. Write Table Headers
+            headers = ["Student Name"] + skills
+            for col_num, header in enumerate(headers, 1):
+                ws.cell(row=current_row, column=col_num, value=header).font = Font(bold=True)
+            current_row += 1
+            
+            # 4. Write Student Data for this term
+            term_data = df_to_save[df_to_save["Term"] == term]
+            for _, row in term_data.iterrows():
+                ws.cell(row=current_row, column=1, value=row["Student Name"])
+                for col_num, skill in enumerate(skills, 2):
+                    ws.cell(row=current_row, column=col_num, value=row[skill])
+                current_row += 1
+            
+            # 5. Add space between tables (one empty row)
+            current_row += 1
+            
+        wb.save(output)
+        return output.getvalue()
     
+    # --- In your UI Section ---
     with col_dl:
-        buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name=selected_sheet, index=False)
-        st.download_button("📥 Download Corrected Excel", buffer, f"Fixed_{selected_sheet}.xlsx", use_container_width=True)
+        # Use the new reconstruction function
+        stacked_excel_data = save_to_stacked_format(st.session_state[state_key])
+        
+        st.download_button(
+            label="📥 Download Corrected Excel (Original Format)",
+            data=stacked_excel_data,
+            file_name=f"Corrected_{selected_sheet}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
 
     # =====================================
     # 6. Calculations & Metrics
