@@ -3,3 +3,7 @@ enableCORS = false
 enableXsrfProtection = false
 # This ensures the server doesn't drop the PUT request mid-stream
 maxUploadSize = 100
+
+[browser]
+# This reduces the number of background messages sent
+gatherUsageStats = false
