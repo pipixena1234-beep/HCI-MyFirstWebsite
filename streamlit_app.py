@@ -27,24 +27,6 @@ def add_custom_style(logo_path):
     st.markdown(
         f"""
         <style>
-        /* Add this inside your <style> tag in the st.markdown block */
-
-        [data-testid="stMetric"] {
-            background-color: #90EE90; /* Light Green */
-            padding: 15px;
-            border-radius: 10px;
-            border: 2px solid #000000; /* Matching your black bold theme */
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        /* This ensures the delta (growth %) text is also bold and readable */
-        [data-testid="stMetricDelta"] {
-            font-weight: bold !important;
-            color: #000000 !important;
-        }
-
-
-        
         /* 1. Main Backgrounds */
         .stApp {{ background-color: #FFDE59; }}
         
@@ -63,6 +45,14 @@ def add_custom_style(logo_path):
             background-image: url("data:image/png;base64,{encoded}");
             background-size: contain;
             background-repeat: no-repeat;
+        }}
+
+        /* 4. Light Green Metric Cards (FIXED SYNTAX) */
+        [data-testid="stMetric"] {{
+            background-color: #90EE90 !important;
+            padding: 15px !important;
+            border-radius: 10px !important;
+            border: 2px solid #000000 !important;
         }}
 
         /* 4. Global Font: Bold and Black */
