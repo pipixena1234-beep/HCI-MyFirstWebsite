@@ -47,18 +47,16 @@ def add_custom_style(logo_path):
             }}
         }}
 
-        /* 4. Inject Logo to Top Left of Sidebar (Desktop) */
-        @media (min-width: 769px) {{
-            [data-testid="stSidebarContent"]::before {{
-                content: "";
-                display: block;
-                margin: 20px auto 10px 20px;
-                width: 80px;
-                height: 80px;
-                background-image: url("data:image/png;base64,{encoded}");
-                background-size: contain;
-                background-repeat: no-repeat;
-            }}
+         /* 3. Inject Logo to Top Left of Sidebar */
+        [data-testid="stSidebarContent"]::before {{
+            content: "";
+            display: block;
+            margin: 20px auto 10px 20px; /* Top, Right, Bottom, Left */
+            width: 80px;  /* Adjust size as needed */
+            height: 80px;
+            background-image: url("data:image/png;base64,{encoded}");
+            background-size: contain;
+            background-repeat: no-repeat;
         }}
         
         /* 4. Light Green Metric Cards (FIXED SYNTAX) */
