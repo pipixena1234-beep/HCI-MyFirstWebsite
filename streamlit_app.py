@@ -49,7 +49,7 @@ def add_custom_style(logo_path):
 
         /* 4. Light Green Metric Cards (FIXED SYNTAX) */
         [data-testid="stMetric"] {{
-            background-color: #6a1b9a !important;
+            background-color: #f1c751 !important;
             padding: 15px !important;
             border-radius: 10px !important;
             border: 2px solid #000000 !important;
