@@ -34,29 +34,7 @@ def add_custom_style(logo_path):
         [data-testid="stSidebar"] {{ 
             background-color: #602b7b !important; 
         }}
-
-       /* 1. Set the width but allow it to collapse */
-        [data-testid="stSidebar"] {
-            min-width: 400px !important;
-            max-width: 400px !important;
-        }
-
-        /* 2. FIX: Ensure the main content shifts correctly when sidebar is open */
-        [data-testid="stMainViewContainer"] {
-            transition: margin-left 0.3s;
-        }
-
-        /* 3. Ensure the Sidebar Content fills the new width */
-        [data-testid="stSidebarContent"] {
-            width: 400px !important;
-        }
-
-        /* 4. Fix the Sidebar Toggle Button position so it doesn't disappear */
-        [data-testid="stSidebarCollapsedControl"] {
-            background-color: #602b7b !important;
-            border-radius: 0 5px 5px 0;
-            left: 0 !important;
-        }
+        
         /* 3. Inject Logo to Top Left of Sidebar */
         [data-testid="stSidebarContent"]::before {{
             content: "";
