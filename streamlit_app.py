@@ -35,6 +35,21 @@ def add_custom_style(logo_path):
             background-color: #602b7b !important; 
         }}
 
+        /* 1. Adjust Sidebar Width */
+        [data-testid="stSidebar"] {{
+            width: 400px !important; /* Change this value to your preferred width */
+        }}
+
+        /* 2. Adjust the Main Content to accommodate the larger sidebar */
+        [data-testid="stMainViewContainer"] {{
+            margin-left: 0px; /* Ensures content flows correctly */
+        }}
+
+        /* 3. Ensure the Sidebar Content fills the new width */
+        [data-testid="stSidebarContent"] {{
+            width: 400px !important;
+        }}
+
         /* 3. Inject Logo to Top Left of Sidebar */
         [data-testid="stSidebarContent"]::before {{
             content: "";
