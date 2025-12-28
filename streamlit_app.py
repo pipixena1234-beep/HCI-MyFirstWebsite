@@ -384,6 +384,12 @@ if uploaded_file:
                 growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(
                     height=450,
                     background=theme_bg  # Matches your app color
+                ).configure_legend(
+                labelColor='black',
+                titleColor='black',
+                labelFontSize=12,
+                labelFontWeight='bold',
+                titleFontWeight='bold'
                 ).configure_view(strokeOpacity=0) # Removes the outer border box
                 
                 st.altair_chart(growth_chart, use_container_width=True)
