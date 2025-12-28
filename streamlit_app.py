@@ -163,39 +163,40 @@ if uploaded_file:
                   "Needs improvement"
     )    
     # =====================================
-    # 1. Initialize Session State for Data
+    # 5. Data Editor & Quality Check
     # =====================================
-    if 'master_df' not in st.session_state:
-        st.session_state.master_df = df.copy()
+    st.header(f"✏️ Data Editor – {selected_sheet}")
     
-    # =========================
-    # 2. Data Review & Editor
-    # =========================
-    st.header(f"✏️ Data Review & Editor – {selected_sheet}")
+    # Audit: Add a Status column for nulls
+    audit_df = working_df.copy()
+    audit_df.insert(0, "Status", audit_df.apply(lambda r: "🚨 MISSING" if r[skills].isnull().any() else "✅ OK", axis=1))
     
-    # Search for nulls in the session state data
-    total_nulls = st.session_state.master_df[skills].isnull().sum().sum()
-    
-    if total_nulls > 0:
-        st.error(f"⚠️ {total_nulls} missing values detected in skill columns!")
-    else:
-        st.success("✅ Data is complete.")
-    
-    # 3. The Editor
-    # We point the editor to the Session State
-    edited_output = st.data_editor(
-        st.session_state.master_df,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="main_editor"
-    )
-    
-    # 4. THE SAVE LOGIC
-    # This button pushes the edits into the "Brain" (Session State)
-    if st.button("💾 Apply Edits to Dashboard"):
-        st.session_state.master_df = edited_output
-        st.success("Reflected changes to Charts and Metrics!")
-        st.rerun() 
+    show_nulls = st.checkbox("🔍 Filter: Show only missing data")
+    display_df = audit_df[audit_df["Status"] == "🚨 MISSING"] if show_nulls else audit_df
+
+    # The Editor
+    edited_df = st.data_editor(display_df, num_rows="dynamic", use_container_width=True, key=f"editor_{selected_sheet}")
+
+    col_save1, col_save2 = st.columns(2)
+    with col_save1:
+        if st.button("💾 Apply Edits & Update Charts"):
+            # Update the session state by dropping the Status column
+            updated_data = edited_df.drop(columns=["Status"])
+            if show_nulls:
+                st.session_state[f"df_{selected_sheet}"].update(updated_data)
+            else:
+                st.session_state[f"df_{selected_sheet}"] = updated_data
+            st.rerun()
+
+    with col_save2:
+        if st.button("📂 Overwrite Original Excel File"):
+            try:
+                # This works locally. if running on web, it will fail (use Download instead)
+                with pd.ExcelWriter(uploaded_file.name, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                    st.session_state[f"df_{selected_sheet}"].to_excel(writer, sheet_name=selected_sheet, index=False)
+                st.success("Successfully overwrote local file!")
+            except:
+                st.error("Cannot overwrite local file (is it open in Excel?)")
     
     # =====================================
     # 5. IMPORTANT: Update the 'df' variable
