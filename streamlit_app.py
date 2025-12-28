@@ -349,10 +349,9 @@ if uploaded_file:
                     tooltip=['Term', 'Skill', alt.Tooltip('Score:Q', format='.1f'), alt.Tooltip('Growth:Q', format='.1f')]
                 )
                 
-                # Combine and set transparency
                 growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
-                
-                # THE FIX: Apply configuration to the layered object
+
+                # Apply configuration to the resulting LayerChart object
                 st.altair_chart(
                     growth_chart.configure_background(fill='transparent').configure_view(strokeOpacity=0), 
                     use_container_width=True
@@ -386,14 +385,14 @@ if uploaded_file:
                     pct='datum.count / datum.total'
                 ).transform_filter(alt.datum.pct > 0.04)
         
-                # THE FIX: Combine then configure background
-                pie_chart = (pie + text).properties(height=350)
+                # Combine pie and text into one object
+                pie_final = (pie + text).properties(height=350)
                 
+                # Apply configuration to that final object
                 st.altair_chart(
-                    pie_chart.configure_background(fill='transparent').configure_view(strokeOpacity=0), 
+                    pie_final.configure_background(fill='transparent').configure_view(strokeOpacity=0), 
                     use_container_width=True
                 )
-        
                 # 2. Statistic Reading (Below Donut) - Logic remains the same
                 st.markdown("---")
                 st.markdown("### 💡 **Analysis Insights**")
