@@ -355,58 +355,54 @@ if uploaded_file:
                     x=alt.X('Term:N', sort=month_order, title="Academic Term")
                 )
                 
-                # Bars for Scores
                 bars = base_chart.mark_bar(opacity=0.4).encode(
                     xOffset='Skill:N',
                     y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Score"),
                     color=alt.Color('Skill:N', legend=alt.Legend(orient='bottom'))
                 )
                 
-                # Line for Growth % (Fixed & Fused)
                 lines = base_chart.mark_line(size=3, point=True).encode(
                     y=alt.Y('Growth:Q', title="Growth %", axis=alt.Axis(format='+')),
                     color='Skill:N',
                     tooltip=['Term', 'Skill', alt.Tooltip('Score:Q', format='.1f'), alt.Tooltip('Growth:Q', format='.1f')]
                 )
                 
+                # Fusing and making Background Transparent
                 growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
-                st.altair_chart(growth_chart, use_container_width=True)
-            else:
-                st.warning("No data available for this selection.")
+                
+                st.altair_chart(
+                    growth_chart.configure_view(strokeOpacity=0).configure_background(fill='transparent'), 
+                    use_container_width=True
+                )
         
-        # --- Right Column: Donut Chart (Top) & Statistics (Below) ---
+        # --- Right Column: Donut Chart & Statistics ---
         with col_chart2:
-            # 1. Donut Chart (Top)
             st.subheader("Grade Distribution (%)")
             
             if not active_df.empty:
                 base_pie = alt.Chart(active_df).encode(
                     theta=alt.Theta(field="Grade", aggregate="count", type="quantitative", stack=True),
                     color=alt.Color(
-                        field="Grade", 
-                        type="nominal", 
-                        sort=grade_order, 
+                        field="Grade", type="nominal", sort=grade_order,
                         scale=alt.Scale(domain=grade_order, range=grade_colors),
                         legend=alt.Legend(title="Grades", orient="right")
                     )
                 )
         
                 pie = base_pie.mark_arc(innerRadius=60, outerRadius=140)
-        
                 text = base_pie.mark_text(radius=100, size=14, fontWeight="bold", color="white").encode(
                     text=alt.Text('pct:Q', format='.0%')
-                ).transform_joinaggregate(
-                    total='count(*)'
-                ).transform_calculate(
-                    pct='datum.count / datum.total'
-                ).transform_filter(alt.datum.pct > 0.04)
+                ).transform_joinaggregate(total='count(*)').transform_calculate(pct='datum.count / datum.total').transform_filter(alt.datum.pct > 0.04)
         
-                st.altair_chart((pie + text).properties(height=350), use_container_width=True)
-        
-                # 2. Statistic Reading (Below Donut)
+                # Making Background Transparent
+                st.altair_chart(
+                    (pie + text).properties(height=350).configure_view(strokeOpacity=0).configure_background(fill='transparent'), 
+                    use_container_width=True
+                )
+                
+                # Statistics
                 st.markdown("---")
                 st.markdown("### 💡 **Analysis Insights**")
-                
                 avg_skills = active_df[skills].mean().sort_values()
                 
                 if not avg_skills.empty:
