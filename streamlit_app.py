@@ -232,68 +232,88 @@ if uploaded_file:
         # =====================================
         # 7. & 8. Side-by-Side Analytics
         # =====================================
-        st.header("📊 Subject Analytics")
+        st.header("📊 Subject Analytics & Insights")
         
-        # Create two columns for the charts
         col_chart1, col_chart2 = st.columns(2)
         
         with col_chart1:
             st.subheader("Performance & Growth Trends")
-            
-            # Sorting order for X-axis
             month_order = ["Jan", "Feb", "March", "Apr", "May", "June", "July", "August", "Sept", "Oct", "Nov", "Dec"]
             
+            # Base chart for the Dual Axis layout
             base_chart = alt.Chart(df_final).encode(x=alt.X('Term:N', sort=month_order, title="Academic Term"))
             
-            # Bars for raw scores
+            # Background Bars (Scores)
             bars = base_chart.mark_bar(opacity=0.4).encode(
                 xOffset='Skill:N',
                 y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Average Score"),
                 color=alt.Color('Skill:N', legend=alt.Legend(orient='bottom'))
             )
             
-            # Lines for growth percentage
+            # Overlay Lines (Growth)
             lines = base_chart.mark_line(size=3, point=True).encode(
                 y=alt.Y('Growth:Q', title="Growth %", axis=alt.Axis(format='+')),
                 color='Skill:N',
                 tooltip=['Term', 'Skill', alt.Tooltip('Score:Q', format='.1f'), alt.Tooltip('Growth:Q', format='.1f')]
             )
             
-            # Combine with dual axis
-            growth_chart = alt.layer(bars, lines).resolve_scale(
-                y='independent'
-            ).properties(height=450)
-            
+            growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
             st.altair_chart(growth_chart, use_container_width=True)
         
         with col_chart2:
-            st.subheader("Grade Distribution")
+            st.subheader("Grade Distribution (%)")
             
-            # Logical order for grades
             grade_order = ["A", "B", "C", "D", "F"]
+            grade_colors = ['#2ecc71', '#3498db', '#f1c40f', '#e67e22', '#e74c3c']
             
-            # Count students per grade
-            grade_chart = alt.Chart(df).mark_bar().encode(
-                x=alt.X('Grade:N', sort=grade_order, title='Final Grade'),
-                y=alt.Y('count():Q', title='Number of Students'),
-                color=alt.Color('Grade:N', 
-                                sort=grade_order, 
-                                legend=None,
-                                scale=alt.Scale(domain=grade_order, 
-                                                range=['#2ecc71', '#3498db', '#f1c40f', '#e67e22', '#e74c3c'])),
-                tooltip=['Grade', alt.Tooltip('count()', title='Count')]
-            ).properties(height=450)
-            
-            # Add text labels on top of bars
-            text = grade_chart.mark_text(
-                align='center',
-                baseline='bottom',
-                dy=-5
-            ).encode(
-                text='count():Q'
+            # Base configuration for the donut chart
+            base_pie = alt.Chart(df).encode(
+                theta=alt.Theta(field="Grade", aggregate="count", type="quantitative", stack=True),
+                color=alt.Color(
+                    field="Grade", 
+                    type="nominal", 
+                    sort=grade_order,
+                    scale=alt.Scale(domain=grade_order, range=grade_colors),
+                    legend=alt.Legend(title="Grades", orient="right")
+                )
             )
+        
+            # The Slices (Donut style)
+            pie = base_pie.mark_arc(innerRadius=60, outerRadius=140)
+        
+            # Percentage Labels inside the slices
+            text = base_pie.mark_text(radius=100, size=14, fontWeight="bold", color="white").encode(
+                text=alt.Text('pct:Q', format='.0%')
+            ).transform_joinaggregate(
+                total='count(*)'
+            ).transform_calculate(
+                pct='datum.count / datum.total'
+            ).transform_filter(
+                alt.datum.pct > 0.04  # Only show text if slice is > 4% to prevent overlapping
+            )
+        
+            st.altair_chart((pie + text).properties(height=450), use_container_width=True)
+        
+        # =====================================
+        # 9. Automated Subject Insights
+        # =====================================
+        st.divider()
+        st.info("💡 **Automated Class Analysis**")
+        ins_col1, ins_col2 = st.columns(2)
+        
+        if not df.empty:
+            # Identify strengths and weaknesses based on average skill scores
+            avg_skills = df[skills].mean().sort_values()
+            weakest_skill = avg_skills.index[0]
+            strongest_skill = avg_skills.index[-1]
             
-            st.altair_chart(grade_chart + text, use_container_width=True)
+            with ins_col1:
+                st.success(f"🌟 **Class Strength:** **{strongest_skill}**")
+                st.write(f"The highest average score is in **{strongest_skill}** ({avg_skills.max():.1f}). Keep reinforcing these methods.")
+                
+            with ins_col2:
+                st.warning(f"⚠️ **Area for Improvement:** **{weakest_skill}**")
+        st.write(f"The lowest average score is in **{weakest_skill}** ({avg_skills.min():.1f}). Consider dedicated review sessions for this skill.")
 
     # =====================================
     # 8. Report Export & Google Drive
