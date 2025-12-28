@@ -326,6 +326,9 @@ if uploaded_file:
         
         col_chart1, col_chart2 = st.columns(2)
         
+        # Define your theme color to match the app background
+        theme_bg = "#FFDE59" 
+
         # --- Left Column: Performance & Growth (Fused with Search) ---
         with col_chart1:
             st.subheader("Performance & Growth Trends")
@@ -349,20 +352,17 @@ if uploaded_file:
                     tooltip=['Term', 'Skill', alt.Tooltip('Score:Q', format='.1f'), alt.Tooltip('Growth:Q', format='.1f')]
                 )
                 
-                # 1. Create the layered object
-                growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
+                # Layering and applying the Yellow Background
+                growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(
+                    height=450,
+                    background=theme_bg  # Matches your app color
+                ).configure_view(strokeOpacity=0) # Removes the outer border box
                 
-                # 2. Use the universal configure method to force transparency
-                final_growth = growth_chart.configure(
-                    background='transparent',
-                    view=alt.Config(strokeOpacity=0)
-                )
-                
-                st.altair_chart(final_growth, use_container_width=True)
+                st.altair_chart(growth_chart, use_container_width=True)
             else:
                 st.warning("No data available for this selection.")
-                
-        # --- Right Column: Donut Chart & Statistics ---
+        
+        # --- Right Column: Donut Chart (Top) & Statistics (Below) ---
         with col_chart2:
             st.subheader("Grade Distribution (%)")
             
@@ -388,17 +388,15 @@ if uploaded_file:
                     pct='datum.count / datum.total'
                 ).transform_filter(alt.datum.pct > 0.04)
         
-                # 1. Create the combined pie object
-                pie_final = (pie + text).properties(height=350)
-                
-                # 2. Use the universal configure method
-                final_pie = pie_final.configure(
-                    background='transparent',
-                    view=alt.Config(strokeOpacity=0)
-                )
-
-                st.altair_chart(final_pie, use_container_width=True)
-                # 2. Statistic Reading (Below Donut) - Logic remains the same
+                # Combining and applying the Yellow Background
+                pie_chart = (pie + text).properties(
+                    height=350,
+                    background=theme_bg  # Matches your app color
+                ).configure_view(strokeOpacity=0)
+        
+                st.altair_chart(pie_chart, use_container_width=True)
+        
+                # 2. Statistic Reading (Below Donut)
                 st.markdown("---")
                 st.markdown("### 💡 **Analysis Insights**")
                 
