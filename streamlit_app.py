@@ -77,6 +77,26 @@ def add_custom_style(logo_path):
             transform: scale(1.02);
         }}
 
+        /* 5.1 SPECIFIC FIX: Browse Files Button (Radish Red) */
+        /* This targets the internal button inside the stFileUploader */
+        [data-testid="stFileUploader"] section button {{
+            background-color: #D0312D !important;
+            color: white !important;
+            border: 1px solid #D0312D !important;
+            border-radius: 8px !important;
+            font-weight: bold !important;
+        }}
+        
+        [data-testid="stFileUploader"] section button:hover {{
+            background-color: #A02623 !important;
+            border-color: #A02623 !important;
+        }}
+
+        /* Optional: Makes the "Drag and drop" text color black to match your theme */
+        [data-testid="stFileUploaderText"] {{
+            color: #000000 !important;
+        }}
+
         /* 6. Radish Red Checkboxes */
         div[data-testid="stCheckbox"] span[role="checkbox"] {{
             background-color: #D0312D !important;
