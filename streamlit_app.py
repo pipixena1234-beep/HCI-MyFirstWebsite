@@ -331,61 +331,86 @@ if uploaded_file:
             st.subheader("Performance & Growth Trends")
             
             if not df_final_active.empty:
-                base = alt.Chart(df_final_active).encode(
+                base_chart = alt.Chart(df_final_active).encode(
                     x=alt.X('Term:N', sort=month_order, title="Academic Term")
                 )
                 
-                bars = base.mark_bar(opacity=0.4).encode(
+                # Bars for Scores
+                bars = base_chart.mark_bar(opacity=0.4).encode(
                     xOffset='Skill:N',
                     y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Score"),
                     color=alt.Color('Skill:N', legend=alt.Legend(orient='bottom'))
                 )
                 
-                lines = base.mark_line(size=3, point=True).encode(
+                # Line for Growth %
+                lines = base_chart.mark_line(size=3, point=True).encode(
                     y=alt.Y('Growth:Q', title="Growth %", axis=alt.Axis(format='+')),
-                    color='Skill:N'
+                    color='Skill:N',
+                    tooltip=['Term', 'Skill', alt.Tooltip('Score:Q', format='.1f'), alt.Tooltip('Growth:Q', format='.1f')]
                 )
                 
-                # COMBINE FIRST
-                layered = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
+                # Combine and set transparency
+                growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
                 
-                # CONFIGURE LAST
-                final_growth_chart = layered.configure_background(
-                    fill='transparent'
-                ).configure_view(
-                    strokeOpacity=0
+                # THE FIX: Apply configuration to the layered object
+                st.altair_chart(
+                    growth_chart.configure_background(fill='transparent').configure_view(strokeOpacity=0), 
+                    use_container_width=True
                 )
+            else:
+                st.warning("No data available for this selection.")
                 
-                st.altair_chart(final_growth_chart, use_container_width=True)
-        
         # --- Right Column: Donut Chart & Statistics ---
         with col_chart2:
             st.subheader("Grade Distribution (%)")
             
             if not active_df.empty:
                 base_pie = alt.Chart(active_df).encode(
-                    theta=alt.Theta(field="Grade", aggregate="count", type="quantitative"),
-                    color=alt.Color(field="Grade", type="nominal", sort=grade_order, scale=alt.Scale(domain=grade_order, range=grade_colors))
+                    theta=alt.Theta(field="Grade", aggregate="count", type="quantitative", stack=True),
+                    color=alt.Color(
+                        field="Grade", 
+                        type="nominal", 
+                        sort=grade_order, 
+                        scale=alt.Scale(domain=grade_order, range=grade_colors),
+                        legend=alt.Legend(title="Grades", orient="right")
+                    )
                 )
         
                 pie = base_pie.mark_arc(innerRadius=60, outerRadius=140)
-                
+        
                 text = base_pie.mark_text(radius=100, size=14, fontWeight="bold", color="white").encode(
                     text=alt.Text('pct:Q', format='.0%')
-                ).transform_joinaggregate(total='count(*)').transform_calculate(pct='datum.count / datum.total').transform_filter(alt.datum.pct > 0.04)
+                ).transform_joinaggregate(
+                    total='count(*)'
+                ).transform_calculate(
+                    pct='datum.count / datum.total'
+                ).transform_filter(alt.datum.pct > 0.04)
         
-                # COMBINE (pie + text) THEN CONFIGURE
-                final_pie_chart = (pie + text).properties(
-                    height=350
-                ).configure_background(
-                    fill='transparent'
-                ).configure_view(
-                    strokeOpacity=0
+                # THE FIX: Combine then configure background
+                pie_chart = (pie + text).properties(height=350)
+                
+                st.altair_chart(
+                    pie_chart.configure_background(fill='transparent').configure_view(strokeOpacity=0), 
+                    use_container_width=True
                 )
         
-                st.altair_chart(final_pie_chart, use_container_width=True)
-
-        
+                # 2. Statistic Reading (Below Donut) - Logic remains the same
+                st.markdown("---")
+                st.markdown("### 💡 **Analysis Insights**")
+                
+                avg_skills = active_df[skills].mean().sort_values()
+                
+                if not avg_skills.empty:
+                    stat_col1, stat_col2 = st.columns(2)
+                    with stat_col1:
+                        st.success("🌟 **Top Skill**")
+                        st.write(f"**{avg_skills.index[-1]}**")
+                        st.caption(f"Avg: {avg_skills.max():.1f}")
+                    with stat_col2:
+                        st.warning("⚠️ **Focus Area**")
+                        st.write(f"**{avg_skills.index[0]}**")
+                        st.caption(f"Avg: {avg_skills.min():.1f}")
+                
 
     # =====================================
     # 8. Report Export & Google Drive
