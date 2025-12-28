@@ -25,45 +25,73 @@ def add_custom_style(logo_path):
         encoded = ""
 
     st.markdown(
-    f"""
-    <style>
-    /* 1. Main Backgrounds */
-    .stApp {{ background-color: #FFDE59; }}
-    [data-testid="stSidebar"] {{ background-color: #6A1B9A !important; }}
+        f"""
+        <style>
+        /* 1. Main Backgrounds */
+        .stApp {{ background-color: #FFDE59; }}
+        
+        /* 2. Sidebar Background - Purple */
+        [data-testid="stSidebar"] {{ 
+            background-color: #6A1B9A !important; 
+        }}
 
-    /* Change all buttons to Radish Red */
-    div.stButton > button, div.stDownloadButton > button {{
-        background-color: #D0312D !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 8px !important;
-        transition: 0.3s;
-    }}
-    
-    /* Hover effect for buttons */
-    div.stButton > button:hover, div.stDownloadButton > button:hover {{
-        background-color: #A02623 !important;
-        transform: scale(1.02);
-    }}
+        /* 3. Inject Logo to Top Left of Sidebar */
+        [data-testid="stSidebarContent"]::before {{
+            content: "";
+            display: block;
+            margin: 20px auto 10px 20px; /* Top, Right, Bottom, Left */
+            width: 80px;  /* Adjust size as needed */
+            height: 80px;
+            background-image: url("data:image/png;base64,{encoded}");
+            background-size: contain;
+            background-repeat: no-repeat;
+        }}
 
-    /* Radish Red Checkboxes */
-    input[type="checkbox"]:checked + div {{
-        background-color: #D0312D !important;
-        border-color: #D0312D !important;
-    }}
-    
-    /* Transparent Chart Containers */
-    .vega-embed {{
-        background-color: transparent !important;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+        /* 4. Global Font: Bold and Black */
+        /* This targets almost all text elements in the app */
+        .stApp, .stApp p, .stApp label, .stApp span, .stApp div {{
+            color: #000000 !important;
+            font-weight: bold !important;
+        }}
+
+        /* 5. Buttons - Radish Red (Kept from your previous code) */
+        div.stButton > button, div.stDownloadButton > button {{
+            background-color: #D0312D !important;
+            color: white !important; /* Button text stays white for readability */
+            border: none !important;
+            border-radius: 8px !important;
+            transition: 0.3s;
+            font-weight: bold !important;
+        }}
+        
+        div.stButton > button:hover, div.stDownloadButton > button:hover {{
+            background-color: #A02623 !important;
+            transform: scale(1.02);
+        }}
+
+        /* 6. Radish Red Checkboxes */
+        div[data-testid="stCheckbox"] span[role="checkbox"] {{
+            background-color: #D0312D !important;
+            border-color: #D0312D !important;
+        }}
+
+        /* 7. Clean Transparent Containers for Charts */
+        .vega-embed {{
+            background-color: transparent !important;
+        }}
+
+        /* Ensure Sidebar text remains readable (if black is too dark on purple) */
+        /* If you want sidebar text white, change this to white */
+        [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {{
+            color: #000000 !important; 
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 # Call the function
 add_custom_style("logo.png")
-    
 
 # GLOBAL CONFIGURATION (Fixes NameErrors)
 month_order = ["Jan", "Feb", "March", "Apr", "May", "June", "July", "August", "Sept", "Oct", "Nov", "Dec"]
