@@ -1,8 +1,5 @@
 [server]
-# This helps mobile Chrome stay connected
 enableCORS = false
 enableXsrfProtection = false
-maxUploadSize = 1500
-
-[browser]
-gatherUsageStats = false
+# This ensures the server doesn't drop the PUT request mid-stream
+maxUploadSize = 100
