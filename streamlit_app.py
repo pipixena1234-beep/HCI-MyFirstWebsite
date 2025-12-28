@@ -326,15 +326,115 @@ if uploaded_file:
             with zipfile.ZipFile(z_buf, "w") as zf:
                 for _, r in df.iterrows():
                     pdf = FPDF()
-                    pdf.add_page(); pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Report: {r['Student Name']}", ln=True)
+                    pdf.add_page()
+                    pdf.set_font("Arial", "B", 16)
+                    pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
                     pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f"Term: {r['Term']} | Avg: {r['Average']:.1f} | Grade: {r['Grade']}", ln=True)
-                    zf.writestr(f"{r['Term']}/{r['Student Name']}_report.pdf", pdf.output(dest="S").encode("latin-1"))
+                    pdf.cell(0, 8, f"Student: {row['Student Name'].strip()}", ln=True)
+                    for s in skills:
+                        pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
+                    pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
+                    pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
+                    pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+                    pdf_bytes = BytesIO()
+                    pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
+                    pdf_bytes.seek(0)
+                    zip_file.writestr(f"{row['Term']}/{row['Student Name'].strip()}_report.pdf", pdf_bytes.read())
             st.download_button("⬇️ Download ZIP", z_buf.getvalue(), "student_reports.zip")
 
     with col_drive:
         f_id = st.text_input("G-Drive Folder ID", "0ALncbMfl-gjdUk9PVA")
         if st.button("🚀 Upload Current View to Drive"):
             st.info("Initiating Google Drive Upload...")
-            # (Your service account logic here)
+            try:
+                sa_info = json.loads(st.secrets["google_service_account"]["google_service_account"])
+                credentials = service_account.Credentials.from_service_account_info(
+                    sa_info, scopes=['https://www.googleapis.com/auth/drive']
+                )
+                drive_service = build('drive', 'v3', credentials=credentials)
+        
+                # --- FIX: Calculate EXACT total steps ---
+                # Only count rows that belong to the selected terms
+                df_to_process = df[df["Term"].isin(selected_terms)]
+                total_steps = len(df_to_process)
+                
+                if total_steps == 0:
+                    st.warning("No data found for the selected terms.")
+                else:
+                    prog_bar = st.progress(0)
+                    status_text = st.empty() # Placeholder for "Processing Alice Tan..."
+                    current_step = 0
+        
+                    for term in selected_terms:
+                        term_clean = term.strip()
+                        parent_id = folder_id_input.strip()
+        
+                        # 1. FIND OR CREATE TERM FOLDER
+                        query_folder = (
+                            f"name='{term_clean}' "
+                            f"and mimeType='application/vnd.google-apps.folder' "
+                            f"and '{parent_id}' in parents and trashed=false"
+                        )
+                        folder_search = drive_service.files().list(
+                            q=query_folder, fields="files(id)", 
+                            includeItemsFromAllDrives=True, supportsAllDrives=True
+                        ).execute()
+                        
+                        existing_folders = folder_search.get('files', [])
+                        if existing_folders:
+                            term_folder_id = existing_folders[0]['id']
+                        else:
+                            folder_metadata = {'name': term_clean, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [parent_id]}
+                            term_folder = drive_service.files().create(body=folder_metadata, fields='id', supportsAllDrives=True).execute()
+                            term_folder_id = term_folder['id']
+        
+                        # 2. UPLOAD / OVERWRITE PDFs
+                        df_term = df[df["Term"] == term]
+                        
+                        for _, row in df_term.iterrows():
+                            student_name = row['Student Name'].strip()
+                            file_name = f"{selected_sheet}_{student_name}_report.pdf"
+                            
+                            # Update status text
+                            status_text.text(f"Uploading: {file_name}")
+        
+                            # --- Generate PDF ---
+                            pdf = FPDF()
+                            pdf.add_page()
+                            pdf.set_font("Arial", "B", 16)
+                            pdf.cell(0, 10, f"Progress Report ({selected_sheet}_{term_clean})", ln=True)
+                            pdf.set_font("Arial", "", 12)
+                            pdf.cell(0, 8, f"Student: {student_name}", ln=True)
+                            for s in skills:
+                                pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
+                            pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
+                            pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
+                            pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
+        
+                            pdf_bytes = BytesIO()
+                            pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
+                            pdf_bytes.seek(0)
+                            media = MediaIoBaseUpload(pdf_bytes, mimetype='application/pdf', resumable=True)
+        
+                            # --- Check if FILE already exists for Overwrite ---
+                            query_file = f"name='{file_name}' and '{term_folder_id}' in parents and trashed=false"
+                            file_search = drive_service.files().list(q=query_file, fields="files(id)", includeItemsFromAllDrives=True, supportsAllDrives=True).execute()
+                            existing_files = file_search.get('files', [])
+        
+                            if existing_files:
+                                drive_service.files().update(fileId=existing_files[0]['id'], media_body=media, supportsAllDrives=True).execute()
+                            else:
+                                file_metadata = {'name': file_name, 'parents': [term_folder_id]}
+                                drive_service.files().create(body=file_metadata, media_body=media, fields='id', supportsAllDrives=True).execute()
+        
+                            # --- FIX: Increment progress based on ACTUAL processed rows ---
+                            current_step += 1
+                            prog_bar.progress(current_step / total_steps)
+        
+                    status_text.empty() # Clear status when done
+                    st.success(f"✅ Successfully processed {total_steps} reports!")
+        
+            except Exception as e:
+                st.error(f"Google Drive operation failed: {e}")
+        
+
