@@ -201,7 +201,7 @@ if uploaded_file:
     df["Average"] = df[skills].mean(axis=1)
     df["Grade"] = df["Average"].apply(lambda x: "A" if x>=80 else "B" if x>=70 else "C" if x>=60 else "D" if x>=50 else "F")
     df["Remarks"] = df["Average"].apply(
-        lambda x: "Excellent work!" if x >= 80 else "Good effort!" if x >= 70 else "Needs improvement"
+        lambda x: "Excellent work!" if x >= 80 else "Good effort!" if x >= 70 else "Needs improvement")
     
     st.divider()
     st.subheader("📌 Performance Highlights")
