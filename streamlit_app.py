@@ -80,6 +80,22 @@ def add_custom_style(logo_path):
             background-color: transparent !important;
         }}
 
+        /* Add this inside your <style> tag in the st.markdown block */
+
+        [data-testid="stMetric"] {
+            background-color: #90EE90; /* Light Green */
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #000000; /* Matching your black bold theme */
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        /* This ensures the delta (growth %) text is also bold and readable */
+        [data-testid="stMetricDelta"] {
+            font-weight: bold !important;
+            color: #000000 !important;
+        }
+
         /* Ensure Sidebar text remains readable (if black is too dark on purple) */
         /* If you want sidebar text white, change this to white */
         [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {{
