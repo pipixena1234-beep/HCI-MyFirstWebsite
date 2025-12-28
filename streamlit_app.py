@@ -167,33 +167,32 @@ if uploaded_file:
     # =========================
     st.header(f"✏️ Data Review & Editor – {selected_sheet}")
     
-    # 1. Count total nulls
-    total_nulls = df.isnull().sum().sum()
+    # 1. Logic to highlight nulls in Red (Background)
+    def highlight_nulls(val):
+        return 'background-color: #ffcccc; color: red;' if pd.isna(val) or val == "" else ''
     
-    # 2. Create the Check Button/Toggle
+    # 2. Filter logic
+    total_nulls = df.isnull().sum().sum()
     show_nulls_only = st.checkbox(f"🔍 Show only rows with missing data ({total_nulls} found)")
     
-    # 3. Filter the dataframe based on the button
+    display_df = df.copy()
     if show_nulls_only:
-        # This filters for rows where ANY value in your skill columns is null
-        display_df = df[df[skills].isnull().any(axis=1)]
-        if display_df.empty:
-            st.success("✨ No missing values found in the skill columns!")
-            display_df = df # Fallback to show all if none found
-    else:
-        display_df = df
+        display_df = df[df.isnull().any(axis=1)]
     
-    # 4. The Instant Editor (using the filtered display_df)
-    st.info("💡 You can edit cells directly below. Changes will reflect in your charts and reports.")
+    # 3. Apply the Red Styling
+    styled_df = display_df.style.applymap(highlight_nulls)
+    
+    # 4. Display & Edit
+    st.write("### 🟥 Red cells indicate missing data")
+    # We use st.data_editor on the display_df, but use the styled_df for visual reference if needed
     edited_df = st.data_editor(
-        display_df, 
+        display_df.style.applymap(highlight_nulls), # This highlights nulls in the editor!
         num_rows="dynamic",
         use_container_width=True,
         key="editor"
     )
     
-    # 5. Sync edits back to the main dataframe
-    # If you edited the filtered view, we need to update the main 'df'
+    # 5. Sync edits back
     if show_nulls_only:
         df.update(edited_df)
     else:
