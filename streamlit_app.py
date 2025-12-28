@@ -246,14 +246,24 @@ if uploaded_file:
         
         # Filter data based on search
         if search_query != "All Students":
-            chart_df = df[df["Student Name"] == search_query].copy()
+            # Filter for the specific student
+            active_df = df[df["Student Name"] == search_query].copy()
             st.info(f"Showing analytics for **{search_query}**")
         else:
-            chart_df = df.copy()
+            # Use the full class data
+            active_df = df.copy()
         
-        # Prepare Data for Growth Chart
-        df_melted_search = chart_df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='Score')
-        df_final_search = df_melted_search.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
+        # --- RECALCULATE GROWTH FOR ACTIVE SELECTION ---
+        # This ensures the line chart shows the growth for the specific student/class view
+        df_melted_active = active_df.melt(id_vars=['Term'], value_vars=skills, var_name='Skill', value_name='Score')
+        df_final_active = df_melted_active.groupby(['Term', 'Skill'])['Score'].mean().reset_index()
+        
+        if len(selected_terms) > 0:
+            base_t = selected_terms[0]
+            df_base = df_final_active[df_final_active['Term'] == base_t][['Skill', 'Score']].rename(columns={'Score':'Base'})
+            df_final_active = pd.merge(df_final_active, df_base, on='Skill')
+            # Use LaTeX logic for growth formula context internally: (Score - Base) / Base
+            df_final_active['Growth'] = ((df_final_active['Score'] - df_final_active['Base']) / df_final_active['Base']) * 100
         
         # =====================================
         # 7, 8, & 9. SIDE-BY-SIDE ANALYTICS
@@ -262,60 +272,79 @@ if uploaded_file:
         
         col_chart1, col_chart2 = st.columns(2)
         
+        # --- Left Column: Performance & Growth (Fused with Search) ---
         with col_chart1:
-            st.subheader("Performance Trends")
-            if not df_final_search.empty:
-                base_chart = alt.Chart(df_final_search).encode(x=alt.X('Term:N', sort=month_order))
+            st.subheader("Performance & Growth Trends")
+            
+            if not df_final_active.empty:
+                base_chart = alt.Chart(df_final_active).encode(
+                    x=alt.X('Term:N', sort=month_order, title="Academic Term")
+                )
                 
+                # Bars for Scores
                 bars = base_chart.mark_bar(opacity=0.4).encode(
                     xOffset='Skill:N',
-                    y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100])),
-                    color='Skill:N'
+                    y=alt.Y('Score:Q', scale=alt.Scale(domain=[0, 100]), title="Score"),
+                    color=alt.Color('Skill:N', legend=alt.Legend(orient='bottom'))
                 )
                 
+                # Line for Growth % (Fixed & Fused)
                 lines = base_chart.mark_line(size=3, point=True).encode(
-                    y=alt.Y('Score:Q'),
+                    y=alt.Y('Growth:Q', title="Growth %", axis=alt.Axis(format='+')),
                     color='Skill:N',
-                    tooltip=['Term', 'Skill', 'Score']
+                    tooltip=['Term', 'Skill', alt.Tooltip('Score:Q', format='.1f'), alt.Tooltip('Growth:Q', format='.1f')]
                 )
                 
-                st.altair_chart(alt.layer(bars, lines).properties(height=450), use_container_width=True)
+                growth_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=450)
+                st.altair_chart(growth_chart, use_container_width=True)
+            else:
+                st.warning("No data available for this selection.")
         
+        # --- Right Column: Donut Chart (Top) & Statistics (Below) ---
         with col_chart2:
+            # 1. Donut Chart (Top)
             st.subheader("Grade Distribution (%)")
             
-            if not chart_df.empty:
-                # Pie/Donut Chart using Global Variables
-                base_pie = alt.Chart(chart_df).encode(
+            if not active_df.empty:
+                base_pie = alt.Chart(active_df).encode(
                     theta=alt.Theta(field="Grade", aggregate="count", type="quantitative", stack=True),
                     color=alt.Color(
                         field="Grade", 
                         type="nominal", 
                         sort=grade_order, 
                         scale=alt.Scale(domain=grade_order, range=grade_colors),
-                        legend=alt.Legend(title="Grade")
+                        legend=alt.Legend(title="Grades", orient="right")
                     )
                 )
-                
-                pie = base_pie.mark_arc(innerRadius=70, outerRadius=140)
-                
-                # Percentage Labels
-                text = base_pie.mark_text(radius=105, size=14, fontWeight="bold", color="white").encode(
+        
+                pie = base_pie.mark_arc(innerRadius=60, outerRadius=140)
+        
+                text = base_pie.mark_text(radius=100, size=14, fontWeight="bold", color="white").encode(
                     text=alt.Text('pct:Q', format='.0%')
                 ).transform_joinaggregate(
                     total='count(*)'
                 ).transform_calculate(
                     pct='datum.count / datum.total'
-                ).transform_filter(alt.datum.pct > 0.01)
+                ).transform_filter(alt.datum.pct > 0.04)
         
                 st.altair_chart((pie + text).properties(height=350), use_container_width=True)
         
-                # Dynamic Statistics (Below Donut)
+                # 2. Statistic Reading (Below Donut)
                 st.markdown("---")
-                avg_s = chart_df[skills].mean().sort_values()
-                s_col1, s_col2 = st.columns(2)
-                s_col1.success(f"🌟 **Top Skill**\n\n{avg_s.index[-1]}")
-                s_col2.warning(f"⚠️ **Focus Area**\n\n{avg_s.index[0]}")
+                st.markdown("### 💡 **Analysis Insights**")
+                
+                avg_skills = active_df[skills].mean().sort_values()
+                
+                if not avg_skills.empty:
+                    stat_col1, stat_col2 = st.columns(2)
+                    with stat_col1:
+                        st.success("🌟 **Top Skill**")
+                        st.write(f"**{avg_skills.index[-1]}**")
+                        st.caption(f"Avg: {avg_skills.max():.1f}")
+                    with stat_col2:
+                        st.warning("⚠️ **Focus Area**")
+                        st.write(f"**{avg_skills.index[0]}**")
+                        st.caption(f"Avg: {avg_skills.min():.1f}")
 
         
 
