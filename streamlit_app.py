@@ -325,24 +325,49 @@ if uploaded_file:
     with col_zip:
         if st.button("📦 Generate Student PDF ZIP"):
             z_buf = BytesIO()
+            # Use 'zf' as the zip handle
             with zipfile.ZipFile(z_buf, "w") as zf:
-                for _, row in df.iterrows():
+                for _, r in df.iterrows():
                     pdf = FPDF()
                     pdf.add_page()
+                    
+                    # Header
                     pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Progress Report ({row['Term']})", ln=True)
+                    # Use 'r' here to match your loop variable
+                    pdf.cell(0, 10, f"Progress Report ({r['Term']})", ln=True)
+                    
+                    # Content
                     pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f"Student: {row['Student Name'].strip()}", ln=True)
+                    pdf.cell(0, 8, f"Student: {str(r['Student Name']).strip()}", ln=True)
+                    pdf.cell(0, 5, "-"*30, ln=True) # Divider line
+                    
+                    # Skill Scores
                     for s in skills:
-                        pdf.cell(0, 8, f"{s}: {row[s]}", ln=True)
-                    pdf.cell(0, 8, f"Average: {row['Average']:.2f}", ln=True)
-                    pdf.cell(0, 8, f"Grade: {row['Grade']}", ln=True)
-                    pdf.cell(0, 8, f"Remarks: {row['Remarks']}", ln=True)
-                    pdf_bytes = BytesIO()
-                    pdf_bytes.write(pdf.output(dest="S").encode("latin-1"))
-                    pdf_bytes.seek(0)
-                    zip_file.writestr(f"{row['Term']}/{row['Student Name'].strip()}_report.pdf", pdf_bytes.read())
-            st.download_button("⬇️ Download ZIP", z_buf.getvalue(), "student_reports.zip")
+                        score = r[s] if pd.notna(r[s]) else 0
+                        pdf.cell(0, 8, f"{s}: {score}", ln=True)
+                    
+                    # Final Stats
+                    pdf.cell(0, 5, "-"*30, ln=True)
+                    pdf.cell(0, 8, f"Average: {r['Average']:.2f}", ln=True)
+                    pdf.cell(0, 8, f"Grade: {r['Grade']}", ln=True)
+                    pdf.cell(0, 8, f"Remarks: {r['Remarks']}", ln=True)
+                    
+                    # Output PDF to string and write to ZIP
+                    # FPDF output(dest="S") returns a string in latin-1
+                    pdf_content = pdf.output(dest="S").encode("latin-1")
+                    
+                    # Organizing files in folders by Term
+                    filename = f"{r['Term']}/{str(r['Student Name']).strip()}_report.pdf"
+                    zf.writestr(filename, pdf_content)
+            
+            # Final download button
+            st.download_button(
+                label="⬇️ Download ZIP",
+                data=z_buf.getvalue(),
+                file_name=f"Student_Reports_{selected_sheet}.zip",
+                mime="application/zip",
+                use_container_width=True
+            )
 
     with col_drive:
         folder_id_input = st.text_input("G-Drive Folder ID", "0ALncbMfl-gjdUk9PVA")
