@@ -15,28 +15,46 @@ import openpyxl
 from openpyxl.styles import Font
 import base64
 
+import streamlit as st
+import base64
+
 def add_custom_style(logo_path):
     # Read the logo file and encode it to base64
-    with open(logo_path, "rb") as f:
-        data = f.read()
-        encoded = base64.b64encode(data).decode()
+    try:
+        with open(logo_path, "rb") as f:
+            data = f.read()
+            encoded = base64.b64encode(data).decode()
+    except FileNotFoundError:
+        encoded = ""
 
     st.markdown(
         f"""
         <style>
-        /* 1. Change the main background and sidebar to yellow */
-        .stApp, [data-testid="stSidebar"] {{
-            background-color: #FFDE59; /* A soft yellow color */
+        /* 1. Main Background - Yellow */
+        .stApp {{
+            background-color: #FFDE59; 
         }}
 
-        /* 2. Inject the logo into the top right corner */
+        /* 2. Sidebar Background - Purple */
+        [data-testid="stSidebar"] {{
+            background-color: #6A1B9A !important;
+        }}
+
+        /* 3. Make Sidebar Text & Labels White (for contrast on purple) */
+        [data-testid="stSidebar"] .stMarkdown, 
+        [data-testid="stSidebar"] label, 
+        [data-testid="stSidebar"] p {{
+            color: white !important;
+        }}
+
+        /* 4. Top Right Logo Overlay */
         .stApp::before {{
             content: "";
             position: fixed;
-            top: 20px;
+            top: 10px;
             right: 20px;
-            width: 120px;  /* Adjust width as needed */
-            height: 120px; /* Adjust height as needed */
+            width: 100px;
+            height: 100px;
             background-image: url("data:image/png;base64,{encoded}");
             background-size: contain;
             background-repeat: no-repeat;
@@ -44,7 +62,7 @@ def add_custom_style(logo_path):
             pointer-events: none;
         }}
         
-        /* Optional: Adjust header transparency to match background */
+        /* 5. Clean up Header */
         header {{
             background-color: rgba(0,0,0,0) !important;
         }}
@@ -53,11 +71,8 @@ def add_custom_style(logo_path):
         unsafe_allow_html=True
     )
 
-# Call the function (make sure 'logo.png' is in your folder)
-try:
-    add_custom_style("logo.png")
-except FileNotFoundError:
-    st.error("Logo file not found. Please ensure 'logo.png' is in the root directory.")
+# Call the function
+add_custom_style("logo.png")
     
 
 # GLOBAL CONFIGURATION (Fixes NameErrors)
