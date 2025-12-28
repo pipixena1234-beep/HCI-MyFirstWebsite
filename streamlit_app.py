@@ -490,6 +490,7 @@ if uploaded_file:
     
     with col_zip:
         if st.button("📦 Generate Student PDF ZIP"):
+            st.markdown("<div style='margin-top: 85px;'></div>", unsafe_allow_html=True)
             z_buf = BytesIO()
             # Use 'zf' as the zip handle
             with zipfile.ZipFile(z_buf, "w") as zf:
