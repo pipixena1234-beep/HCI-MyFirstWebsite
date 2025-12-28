@@ -313,27 +313,6 @@ if uploaded_file:
                     st.warning(f"⚠️ **Focus Area**")
                     st.write(f"**{weakest_skill}**")
                     st.caption(f"Avg: {avg_skills.min():.1f}")
-        
-        # =====================================
-        # 9. Automated Subject Insights
-        # =====================================
-        st.divider()
-        st.info("💡 **Automated Class Analysis**")
-        ins_col1, ins_col2 = st.columns(2)
-        
-        if not df.empty:
-            # Identify strengths and weaknesses based on average skill scores
-            avg_skills = df[skills].mean().sort_values()
-            weakest_skill = avg_skills.index[0]
-            strongest_skill = avg_skills.index[-1]
-            
-            with ins_col1:
-                st.success(f"🌟 **Class Strength:** **{strongest_skill}**")
-                st.write(f"The highest average score is in **{strongest_skill}** ({avg_skills.max():.1f}). Keep reinforcing these methods.")
-                
-            with ins_col2:
-                st.warning(f"⚠️ **Area for Improvement:** **{weakest_skill}**")
-        st.write(f"The lowest average score is in **{weakest_skill}** ({avg_skills.min():.1f}). Consider dedicated review sessions for this skill.")
 
     # =====================================
     # 8. Report Export & Google Drive
