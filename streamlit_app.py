@@ -25,70 +25,61 @@ def add_custom_style(logo_path):
         encoded = ""
 
     st.markdown(
-        f"""
-        <style>
-        /* 1. Backgrounds */
-        .stApp {{ background-color: #FFDE59; }}
-        [data-testid="stSidebar"] {{ background-color: #6A1B9A !important; }}
+    f"""
+    <style>
+    /* 1. Main Backgrounds */
+    .stApp {{ background-color: #FFDE59; }}
+    [data-testid="stSidebar"] {{ background-color: #6A1B9A !important; }}
 
-        /* 2. Radish Red Primary Color for Widgets */
-        :root {{
-            --primary-color: #D0312D; /* Radish Red */
-        }}
+    /* 2. Style ALL Buttons to Radish Red */
+    div.stButton > button {{
+        background-color: #D0312D !important;
+        color: white !important;
+        border-radius: 8px;
+        width: 100%;
+        border: none;
+        font-weight: bold;
+    }}
+    
+    /* 3. Style Checkboxes to Radish Red */
+    /* Target the checkmark box */
+    [data-testid="stCheckbox"] [data-testid="stWidgetLabel"] p {{
+        color: black; /* Text next to checkbox */
+        font-weight: 500;
+    }}
+    div[data-testid="stCheckbox"]  span[role="checkbox"] {{
+        background-color: #D0312D !important;
+        border-color: #D0312D !important;
+    }}
 
-        /* 3. Style Buttons (Excel Upload & PDF Gen) to Radish Red */
-        div.stButton > button:first-child {{
-            background-color: #D0312D !important;
-            color: white !important;
-            border-radius: 8px;
-            border: none;
-        }}
-        
-        /* 4. Style File Uploader & Selection Boxes */
-        /* Targets the border of the upload box and dropdowns */
-        [data-testid="stFileUploader"], [data-baseweb="select"] {{
-            border: 2px solid #D0312D !important;
-            border-radius: 8px;
-            background-color: white !important;
-        }}
+    /* 4. Force Altair Containers to be transparent */
+    .vega-embed {{
+        background-color: transparent !important;
+        border: none !important;
+    }}
 
-        /* 5. Highlight color for selected items in dropdowns */
-        [data-baseweb="popover"] li {{
-            background-color: white !important;
-            color: black !important;
-        }}
-        [data-baseweb="popover"] li:hover {{
-            background-color: #D0312D !important;
-            color: white !important;
-        }}
-
-        /* 6. Sidebar Text & Inputs */
-        [data-testid="stSidebar"] .stMarkdown, 
-        [data-testid="stSidebar"] label, 
-        [data-testid="stSidebar"] p {{
-            color: white !important;
-        }}
-
-        /* 7. Top Right Logo Overlay */
-        .stApp::before {{
-            content: "";
-            position: fixed;
-            top: 10px;
-            right: 20px;
-            width: 100px;
-            height: 100px;
-            background-image: url("data:image/png;base64,{encoded}");
-            background-size: contain;
-            background-repeat: no-repeat;
-            z-index: 999;
-            pointer-events: none;
-        }}
-        
-        header {{ background-color: rgba(0,0,0,0) !important; }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    /* 5. Sidebar Text Visibility */
+    [data-testid="stSidebar"] * {{
+        color: white !important;
+    }}
+    
+    /* 6. Top Right Logo Overlay */
+    .stApp::before {{
+        content: "";
+        position: fixed;
+        top: 10px;
+        right: 20px;
+        width: 100px;
+        height: 100px;
+        background-image: url("data:image/png;base64,{encoded}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        z-index: 999;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # Call the function
 add_custom_style("logo.png")
